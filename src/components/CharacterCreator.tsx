@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import tavernBackground from "@/assets/tavern-background.jpg";
+import axios from "axios"; // Import axios for making HTTP requests
 
 interface Character {
   name: string;
@@ -29,12 +30,12 @@ interface Character {
 
 const races = [
   "Human", "Elf", "Dwarf", "Halfling", "Dragonborn", "Gnome", "Half-Elf", 
-  "Half-Orc", "Tiefling", "Aarakocra", "Genasi", "Goliath", "Aasimar", "Tabaxi"
+  "Half-Orc", "Tiefling", "Genasi", "Goliath", "Aasimar", "Firbolg"
 ];
 
 const classes = [
   "Barbarian", "Bard", "Cleric", "Druid", "Fighter", "Monk", "Paladin",
-  "Ranger", "Rogue", "Sorcerer", "Warlock", "Wizard", "Artificer", "Blood Hunter"
+  "Ranger", "Rogue", "Sorcerer", "Warlock", "Wizard"
 ];
 
 const backgrounds = [
@@ -304,7 +305,18 @@ export function CharacterCreator() {
                 />
               </div>
 
-              <Button className="w-full bg-gradient-gold text-background hover:shadow-glow-gold">
+              <Button
+                  className="w-full bg-gradient-gold text-background hover:shadow-glow-gold"
+                  onClick={async () => {
+                    try {
+                      await axios.post("http://localhost:5181/api/character", character);
+                      alert("Character saved successfully!");
+                    } catch (error) {
+                      console.error("Error saving character:", error);
+                      alert("Failed to save character.");
+                    }
+                  }}
+              >
                 Save Character
               </Button>
             </CardContent>
