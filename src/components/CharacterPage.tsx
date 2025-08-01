@@ -51,11 +51,28 @@ export enum Class
   Wizard
 }
 
+export enum Background
+{
+  "Acolyte",
+  "Criminal",
+  "Folk Hero",
+  "Noble",
+  "Sage",
+  "Soldier",
+  "Charlatan",
+  "Entertainer",
+  "Guild Artisan",
+  "Hermit",
+  "Outlander",
+  "Sailor",
+  "Urchin"
+}
+
 interface Character {
   name: string;
   race: Race;
   class: Class;
-  background: string;
+  background: Background;
   alignment: Alignment;
   level: number;
   strength: number;
@@ -195,7 +212,7 @@ export const CharacterPage = () => {
                 Level {character.level} {Race[character.race]} {Class[character.class]}
               </Badge>
               <Badge variant="outline" className="text-lg px-4 py-2">
-                {character.background}
+                {Background[character.background]}
               </Badge>
               <Badge variant="outline" className="text-lg px-4 py-2">
                 {Alignment[character.alignment]}
