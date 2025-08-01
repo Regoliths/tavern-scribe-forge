@@ -52,6 +52,16 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				parchment: {
+					DEFAULT: 'hsl(var(--parchment))',
+					foreground: 'hsl(var(--parchment-foreground))'
+				},
+				wood: {
+					dark: 'hsl(var(--wood-dark))',
+					light: 'hsl(var(--wood-light))'
+				},
+				gold: 'hsl(var(--gold))',
+				copper: 'hsl(var(--copper))',
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
@@ -62,6 +72,20 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				}
+			},
+			backgroundImage: {
+				'gradient-wood': 'var(--gradient-wood)',
+				'gradient-parchment': 'var(--gradient-parchment)',
+				'gradient-gold': 'var(--gradient-gold)',
+			},
+			boxShadow: {
+				'medieval': 'var(--shadow-medieval)',
+				'inset': 'var(--shadow-inset)',
+				'glow-gold': 'var(--glow-gold)',
+			},
+			fontFamily: {
+				'cinzel': ['Cinzel', 'serif'],
+				'crimson': ['Crimson Text', 'serif'],
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
