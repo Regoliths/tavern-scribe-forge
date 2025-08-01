@@ -1,0 +1,12 @@
+﻿{
+  "issuer": "https://example.com",
+  "clientId": "your-client-id",
+  "redirectUri": "https://yourapp.com/callback",
+  "scopes": [
+  "openid",
+  "profile",
+  "email"
+  ],
+  "responseType": "code",
+  "postLogoutRedirectUri": "https://yourapp.com/logout"
+}
