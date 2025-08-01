@@ -1,16 +1,62 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import tavernBackground from "@/assets/tavern-background.jpg";
+import axios from "axios";
+
+export enum Race {
+  Human,
+  Elf,
+  Dwarf,
+  Halfling,
+  Dragonborn,
+  Gnome,
+  HalfElf,
+  HalfOrc,
+  Tiefling,
+  Aasimar,
+  Firbolg,
+  Genasi,
+  Goliath,
+}
+
+export enum Alignment
+{
+  "Lawful Good",
+  "Neutral Good",
+  "Chaotic Good",
+  "Lawful Neutral",
+  "True Neutral",
+  "Chaotic Neutral",
+  "Lawful Evil",
+  "Neutral Evil",
+  "Chaotic Evil"
+}
+
+export enum Class
+{
+  Barbarian,
+  Bard,
+  Cleric,
+  Druid,
+  Fighter,
+  Monk,
+  Paladin,
+  Ranger,
+  Rogue,
+  Sorcerer,
+  Warlock,
+  Wizard
+}
 
 interface Character {
   name: string;
-  race: string;
-  class: string;
+  race: Race;
+  class: Class;
   background: string;
-  alignment: string;
+  alignment: Alignment;
   level: number;
   strength: number;
   dexterity: number;
@@ -24,7 +70,12 @@ interface Character {
   notes: string;
 }
 
+interface CharacterPageProps {
+  characterId: string;
+}
+
 // Mock character data - in a real app, this would come from your backend/Supabase
+/*
 const mockCharacter: Character = {
   name: "Thorin Ironforge",
   race: "Dwarf",
@@ -42,18 +93,89 @@ const mockCharacter: Character = {
   armorClass: 18,
   speed: 25,
   notes: "A stalwart defender of the realm, wielding the ancestral hammer of his clan."
-};
+}; */
+
+
 
 const getModifier = (score: number): string => {
   const modifier = Math.floor((score - 10) / 2);
   return modifier >= 0 ? `+${modifier}` : `${modifier}`;
 };
 
+/**
+ * Fetches a single character by its ID from the API.
+ * @param id The ID of the character to fetch.
+ * @returns A Promise that resolves to the Character object.
+ */
+export const getCharacter = async (id: string): Promise<Character> => {
+  try {
+    // Use the generic <Character> to type the expected response data
+    const response = await axios.get<Character>(`http://localhost:5181/api/character/${id}`);
+
+    // response.data is now strongly typed as Character
+    return response.data;
+  } catch (error) {
+    console.error(`Error finding character with id ${id}:`, error);
+    // Re-throw the error so the calling component can handle it
+    throw error;
+  }
+};
 export const CharacterPage = () => {
   const { id } = useParams<{ id: string }>();
-  
-  // In a real app, you would fetch the character data using the id
-  const character = mockCharacter;
+
+  const [character, setCharacter] = useState<Character | null>(null);
+
+  // State to handle the loading process. We start in a loading state.
+  const [loading, setLoading] = useState<boolean>(true);
+
+  // State to hold any potential network errors.
+  const [error, setError] = useState<string | null>(null);
+
+  // 3. The useEffect Hook to Fetch Data on Load
+  useEffect(() => {
+    // We define an async function inside the effect to perform the fetch
+    const fetchCharacterData = async () => {
+      try {
+        // Use the generic <Character> to tell axios the expected response type
+        const response = await axios.get<Character>(`http://localhost:5181/api/character/${id}`);
+
+        // The promise has resolved. Set the character data in state.
+        setCharacter(response.data);
+        //setCharacter(mockCharacter)
+
+      } catch (err) {
+        // The promise was rejected. Set an error message.
+        setError("Failed to fetch character. Please check the ID and try again.");
+        console.error("Error fetching character:", err);
+      } finally {
+        // This runs whether the fetch succeeded or failed.
+        // We are no longer loading.
+        setLoading(false);
+      }
+    };
+
+    // Call the function to start the data fetching process
+    fetchCharacterData();
+
+    // The dependency array [characterId] means this effect will run once when the
+    // component mounts, and re-run ONLY if the characterId prop changes.
+  }, [id]);
+
+  // 4. Conditional Rendering Logic
+  // Show a loading message while the fetch is in progress
+  if (loading) {
+    return <div>Loading character details...</div>;
+  }
+
+  // Show an error message if the fetch failed
+  if (error) {
+    return <div style={{ color: 'red' }}>{error}</div>;
+  }
+
+  // If there's no character data for some reason after loading
+  if (!character) {
+    return <div>Character not found.</div>;
+  }
 
   return (
     <div 
@@ -70,13 +192,13 @@ export const CharacterPage = () => {
             </h1>
             <div className="flex justify-center gap-4 flex-wrap">
               <Badge variant="secondary" className="text-lg px-4 py-2">
-                Level {character.level} {character.race} {character.class}
+                Level {character.level} {Race[character.race]} {Class[character.class]}
               </Badge>
               <Badge variant="outline" className="text-lg px-4 py-2">
                 {character.background}
               </Badge>
               <Badge variant="outline" className="text-lg px-4 py-2">
-                {character.alignment}
+                {Alignment[character.alignment]}
               </Badge>
             </div>
           </div>
