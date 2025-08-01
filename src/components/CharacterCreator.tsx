@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,22 @@ const classes = [
   "Barbarian", "Bard", "Cleric", "Druid", "Fighter", "Monk", "Paladin",
   "Ranger", "Rogue", "Sorcerer", "Warlock", "Wizard"
 ];
+
+// Hit dice for each class (D&D 5e rules)
+const classHitDice: Record<string, number> = {
+  "Barbarian": 12,
+  "Fighter": 10,
+  "Paladin": 10,
+  "Ranger": 10,
+  "Bard": 8,
+  "Cleric": 8,
+  "Druid": 8,
+  "Monk": 8,
+  "Rogue": 8,
+  "Warlock": 8,
+  "Sorcerer": 6,
+  "Wizard": 6
+};
 
 const backgrounds = [
   "Acolyte", "Criminal", "Folk Hero", "Noble", "Sage", "Soldier", "Charlatan",
@@ -84,6 +100,52 @@ export function CharacterCreator() {
     const total = rolls.slice(0, 3).reduce((sum, roll) => sum + roll, 0);
     updateCharacter(ability, total);
   };
+
+  // Calculate hit points according to D&D 5e rules
+  const calculateHitPoints = (characterClass: string, level: number, constitution: number) => {
+    if (!characterClass || !classHitDice[characterClass]) return 8; // Default fallback
+    
+    const hitDie = classHitDice[characterClass];
+    const conModifier = getModifier(constitution);
+    
+    // Level 1: Max hit die + CON modifier
+    let hitPoints = hitDie + conModifier;
+    
+    // Levels 2+: Roll hit die for each level (using average + 1 for consistency)
+    for (let i = 2; i <= level; i++) {
+      const averageRoll = Math.floor(hitDie / 2) + 1; // Average of hit die
+      hitPoints += averageRoll + conModifier;
+    }
+    
+    return Math.max(hitPoints, level); // Minimum 1 HP per level
+  };
+
+  // Function to roll hit points (for levels 2+)
+  const rollHitPoints = () => {
+    if (!character.class || !classHitDice[character.class]) return;
+    
+    const hitDie = classHitDice[character.class];
+    const conModifier = getModifier(character.constitution);
+    
+    // Level 1: Max hit die + CON modifier
+    let hitPoints = hitDie + conModifier;
+    
+    // Levels 2+: Actually roll the dice
+    for (let i = 2; i <= character.level; i++) {
+      const roll = Math.floor(Math.random() * hitDie) + 1;
+      hitPoints += roll + conModifier;
+    }
+    
+    updateCharacter("hitPoints", Math.max(hitPoints, character.level));
+  };
+
+  // Auto-calculate hit points when class, level, or constitution changes
+  useEffect(() => {
+    if (character.class && character.level && character.constitution) {
+      const newHitPoints = calculateHitPoints(character.class, character.level, character.constitution);
+      setCharacter(prev => ({ ...prev, hitPoints: newHitPoints }));
+    }
+  }, [character.class, character.level, character.constitution]);
 
   return (
     <div 
@@ -256,41 +318,66 @@ export function CharacterCreator() {
               <CardTitle className="text-xl font-bold">Combat & Notes</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 p-6">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-3">
                 <div>
-                  <Label htmlFor="hitPoints" className="text-parchment font-semibold">Hit Points</Label>
-                  <Input
-                    id="hitPoints"
-                    type="number"
-                    min="1"
-                    value={character.hitPoints}
-                    onChange={(e) => updateCharacter("hitPoints", parseInt(e.target.value) || 1)}
-                    className="bg-parchment/10 border-copper text-parchment"
-                  />
+                  <div className="flex items-center justify-between mb-2">
+                    <Label htmlFor="hitPoints" className="text-parchment font-semibold">Hit Points</Label>
+                    {character.class && (
+                      <Badge variant="outline" className="border-gold text-gold text-xs">
+                        d{classHitDice[character.class]} + CON
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      id="hitPoints"
+                      type="number"
+                      min="1"
+                      value={character.hitPoints}
+                      onChange={(e) => updateCharacter("hitPoints", parseInt(e.target.value) || 1)}
+                      className="flex-1 bg-parchment/10 border-copper text-parchment"
+                      placeholder="Auto-calculated"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={rollHitPoints}
+                      disabled={!character.class}
+                      className="bg-copper hover:bg-copper/80 text-parchment shadow-inset"
+                    >
+                      Roll HP
+                    </Button>
+                  </div>
+                  {character.class && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Level 1: {classHitDice[character.class]} + {getModifier(character.constitution)} = {classHitDice[character.class] + getModifier(character.constitution)} HP
+                    </p>
+                  )}
                 </div>
                 
-                <div>
-                  <Label htmlFor="armorClass" className="text-parchment font-semibold">Armor Class</Label>
-                  <Input
-                    id="armorClass"
-                    type="number"
-                    min="1"
-                    value={character.armorClass}
-                    onChange={(e) => updateCharacter("armorClass", parseInt(e.target.value) || 10)}
-                    className="bg-parchment/10 border-copper text-parchment"
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="speed" className="text-parchment font-semibold">Speed (ft)</Label>
-                  <Input
-                    id="speed"
-                    type="number"
-                    min="0"
-                    value={character.speed}
-                    onChange={(e) => updateCharacter("speed", parseInt(e.target.value) || 30)}
-                    className="bg-parchment/10 border-copper text-parchment"
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="armorClass" className="text-parchment font-semibold">Armor Class</Label>
+                    <Input
+                      id="armorClass"
+                      type="number"
+                      min="1"
+                      value={character.armorClass}
+                      onChange={(e) => updateCharacter("armorClass", parseInt(e.target.value) || 10)}
+                      className="bg-parchment/10 border-copper text-parchment"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="speed" className="text-parchment font-semibold">Speed (ft)</Label>
+                    <Input
+                      id="speed"
+                      type="number"
+                      min="0"
+                      value={character.speed}
+                      onChange={(e) => updateCharacter("speed", parseInt(e.target.value) || 30)}
+                      className="bg-parchment/10 border-copper text-parchment"
+                    />
+                  </div>
                 </div>
               </div>
 
