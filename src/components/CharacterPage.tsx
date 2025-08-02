@@ -68,6 +68,16 @@ export enum Background
   "Urchin"
 }
 
+interface InventoryItem {
+  id: number;
+  name: string;
+  description: string;
+  type: string;
+  quantity: number;
+  weight: number;
+  cost: number;
+}
+
 interface Character {
   name: string;
   race: Race;
@@ -85,6 +95,8 @@ interface Character {
   armorClass: number;
   speed: number;
   notes: string;
+  equippedItems?: InventoryItem[];
+  backpackItems?: InventoryItem[];
 }
 
 interface CharacterPageProps {
@@ -194,6 +206,35 @@ export const CharacterPage = () => {
     return <div>Character not found.</div>;
   }
 
+  // Helper functions for inventory calculations
+  const calculateTotalWeight = (items: InventoryItem[] = []): number => {
+    return items.reduce((total, item) => total + (item.weight * item.quantity), 0);
+  };
+
+  const equippedWeight = calculateTotalWeight(character.equippedItems);
+  const backpackWeight = calculateTotalWeight(character.backpackItems);
+  const totalWeight = equippedWeight + backpackWeight;
+
+  // Component for rendering inventory items
+  const InventoryItemComponent = ({ item }: { item: InventoryItem }) => (
+    <div className="bg-parchment/10 border border-copper rounded p-3 mb-2">
+      <div className="flex justify-between items-start mb-2">
+        <div className="flex-1">
+          <div className="text-parchment font-medium">{item.name}</div>
+          <Badge variant="outline" className="text-xs mt-1">{item.type}</Badge>
+        </div>
+        <div className="text-right text-sm">
+          <div className="text-copper">Qty: {item.quantity}</div>
+          <div className="text-copper">{item.weight * item.quantity} lbs</div>
+        </div>
+      </div>
+      {item.description && (
+        <p className="text-parchment/80 text-sm mb-2">{item.description}</p>
+      )}
+      <div className="text-copper text-sm">Cost: {item.cost} gp</div>
+    </div>
+  );
+
   return (
     <div 
       className="min-h-screen bg-cover bg-center bg-no-repeat relative"
@@ -287,6 +328,84 @@ export const CharacterPage = () => {
                   <p className="text-parchment whitespace-pre-wrap">
                     {character.notes || "No notes recorded for this character."}
                   </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Inventory Section */}
+            <Card className="bg-wood-dark/80 border-copper backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-2xl font-cinzel text-parchment flex justify-between items-center">
+                  Equipped Items
+                  <Badge variant="secondary" className="text-sm">
+                    {equippedWeight} lbs
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {character.equippedItems && character.equippedItems.length > 0 ? (
+                  <div className="space-y-2">
+                    {character.equippedItems.map((item) => (
+                      <InventoryItemComponent key={item.id} item={item} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-parchment/60">
+                    No equipped items
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="bg-wood-dark/80 border-copper backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-2xl font-cinzel text-parchment flex justify-between items-center">
+                  Backpack
+                  <Badge variant="secondary" className="text-sm">
+                    {backpackWeight} lbs
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {character.backpackItems && character.backpackItems.length > 0 ? (
+                  <div className="space-y-2">
+                    {character.backpackItems.map((item) => (
+                      <InventoryItemComponent key={item.id} item={item} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-parchment/60">
+                    Backpack is empty
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Total Weight Summary */}
+            <Card className="bg-wood-dark/80 border-copper backdrop-blur-sm lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-2xl font-cinzel text-parchment">Weight Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="text-center">
+                    <div className="bg-parchment/10 border border-copper rounded p-3">
+                      <div className="text-sm font-medium text-copper mb-1">Equipped Weight</div>
+                      <div className="text-2xl font-bold text-parchment">{equippedWeight} lbs</div>
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="bg-parchment/10 border border-copper rounded p-3">
+                      <div className="text-sm font-medium text-copper mb-1">Backpack Weight</div>
+                      <div className="text-2xl font-bold text-parchment">{backpackWeight} lbs</div>
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="bg-parchment/10 border border-copper rounded p-3">
+                      <div className="text-sm font-medium text-copper mb-1">Total Weight</div>
+                      <div className="text-2xl font-bold text-parchment">{totalWeight} lbs</div>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
