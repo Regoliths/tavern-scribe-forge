@@ -205,9 +205,9 @@ const CombatPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-12 gap-4">
+        <div className="flex justify-center items-start gap-6">
           {/* Left Side - Player Cards */}
-          <div className="col-span-3 space-y-4">
+          <div className="w-72 space-y-3">
             <h2 className="text-xl font-cinzel font-semibold text-parchment mb-4">Players</h2>
             {initiativeOrder.filter(c => c.type === 'player').map(combatant => (
               <CombatantCard 
@@ -219,10 +219,10 @@ const CombatPage: React.FC = () => {
           </div>
 
           {/* Middle - Combat Grid */}
-          <div className="col-span-6">
-            <h2 className="text-xl font-cinzel font-semibold text-parchment mb-4 text-center">Arena (10x10 Grid)</h2>
+          <div className="flex flex-col items-center">
+            <h2 className="text-xl font-cinzel font-semibold text-parchment mb-4">Arena (10x10 Grid)</h2>
             <div className="bg-wood-light/30 p-4 rounded-lg border-2 border-copper">
-              <div className="grid grid-cols-10 gap-1 aspect-square max-w-lg mx-auto">
+              <div className="grid grid-cols-10 gap-0.5 w-80 h-80">
                 {grid.map((cell, idx) => {
                   const combatant = combatants.find(c => c.position.x === cell.x && c.position.y === cell.y);
                   const isValidMove = currentCombatant.isMoving && 
@@ -233,7 +233,7 @@ const CombatPage: React.FC = () => {
                     <div
                       key={idx}
                       className={`
-                        aspect-square border border-copper/50 flex items-center justify-center text-xs font-bold cursor-pointer
+                        w-7 h-7 border border-copper/50 flex items-center justify-center text-xs font-bold cursor-pointer
                         ${combatant ? (combatant.type === 'player' ? 'bg-blue-500 text-white' : 'bg-red-500 text-white') : 'bg-parchment/20'}
                         ${isValidMove ? 'bg-green-400/50 hover:bg-green-400/70' : ''}
                         ${currentCombatant.isMoving && !isValidMove && !combatant ? 'bg-red-400/20' : ''}
@@ -249,7 +249,7 @@ const CombatPage: React.FC = () => {
           </div>
 
           {/* Right Side - NPC Cards */}
-          <div className="col-span-3 space-y-4">
+          <div className="w-72 space-y-3">
             <h2 className="text-xl font-cinzel font-semibold text-parchment mb-4">Enemies</h2>
             {initiativeOrder.filter(c => c.type === 'npc').map(combatant => (
               <CombatantCard 
