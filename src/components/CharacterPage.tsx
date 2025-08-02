@@ -68,7 +68,7 @@ export enum Background
   "Urchin"
 }
 
-interface InventoryItem {
+interface Item {
   id: number;
   name: string;
   description: string;
@@ -77,6 +77,20 @@ interface InventoryItem {
   weight: number;
   cost: number;
 }
+
+interface Equipment {
+    id: number;
+    characterId: number;
+    items: Item[];
+    totalWeight: number;
+    }
+    
+  interface Inventory {
+    id: number;
+    characterId: number;
+    items: Item[];
+    totalWeight: number;
+  }
 
 interface Character {
   name: string;
@@ -95,8 +109,12 @@ interface Character {
   armorClass: number;
   speed: number;
   notes: string;
-  equippedItems?: InventoryItem[];
-  backpackItems?: InventoryItem[];
+  initiative?: number;
+  hitDice?: string;
+  passivePerception?: number;
+  proficiencyBonus?: number;
+  equipment?: Equipment;
+  inventory?: Inventory;
 }
 
 interface CharacterPageProps {
@@ -104,13 +122,13 @@ interface CharacterPageProps {
 }
 
 // Mock character data - in a real app, this would come from your backend/Supabase
-/*
+
 const mockCharacter: Character = {
   name: "Thorin Ironforge",
-  race: "Dwarf",
-  class: "Fighter",
-  background: "Folk Hero",
-  alignment: "Lawful Good",
+  race: Race.Dwarf,
+  class: Class.Fighter,
+  background: Background["Soldier"],
+  alignment: Alignment["Lawful Good"],
   level: 5,
   strength: 16,
   dexterity: 12,
@@ -122,7 +140,7 @@ const mockCharacter: Character = {
   armorClass: 18,
   speed: 25,
   notes: "A stalwart defender of the realm, wielding the ancestral hammer of his clan."
-}; */
+}; 
 
 
 
@@ -169,8 +187,9 @@ export const CharacterPage = () => {
         const response = await axios.get<Character>(`http://localhost:5181/api/character/${id}`);
 
         // The promise has resolved. Set the character data in state.
+        
         setCharacter(response.data);
-        //setCharacter(mockCharacter)
+        
 
       } catch (err) {
         // The promise was rejected. Set an error message.
@@ -207,16 +226,22 @@ export const CharacterPage = () => {
   }
 
   // Helper functions for inventory calculations
-  const calculateTotalWeight = (items: InventoryItem[] = []): number => {
+  const calculateTotalWeight = (items: Array<Item> = []): number => {
+    if (!Array.isArray(items)) {
+      // If it's not an array (it could be null, undefined, etc.),
+      // then the total weight is 0.
+      return 0;
+    }
+    
     return items.reduce((total, item) => total + (item.weight * item.quantity), 0);
   };
 
-  const equippedWeight = calculateTotalWeight(character.equippedItems);
-  const backpackWeight = calculateTotalWeight(character.backpackItems);
+  const equippedWeight = calculateTotalWeight(character?.equipment?.items ?? []);
+  const backpackWeight = calculateTotalWeight(character?.inventory?.items ?? []);
   const totalWeight = equippedWeight + backpackWeight;
 
   // Component for rendering inventory items
-  const InventoryItemComponent = ({ item }: { item: InventoryItem }) => (
+  const InventoryItemComponent = ({ item }: { item: Item }) => (
     <div className="bg-parchment/10 border border-copper rounded p-3 mb-2">
       <div className="flex justify-between items-start mb-2">
         <div className="flex-1">
@@ -331,8 +356,7 @@ export const CharacterPage = () => {
                 </div>
               </CardContent>
             </Card>
-
-            {/* Inventory Section */}
+            
             <Card className="bg-wood-dark/80 border-copper backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="text-2xl font-cinzel text-parchment flex justify-between items-center">
@@ -343,9 +367,9 @@ export const CharacterPage = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {character.equippedItems && character.equippedItems.length > 0 ? (
+                {character?.equipment?.items && character.equipment.items.length >= 0 ? (
                   <div className="space-y-2">
-                    {character.equippedItems.map((item) => (
+                    {character.equipment.items.map((item) => (
                       <InventoryItemComponent key={item.id} item={item} />
                     ))}
                   </div>
@@ -367,9 +391,9 @@ export const CharacterPage = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {character.backpackItems && character.backpackItems.length > 0 ? (
+                {character.inventory && character.inventory.items.length > 0 ? (
                   <div className="space-y-2">
-                    {character.backpackItems.map((item) => (
+                    {character.inventory.items.map((item) => (
                       <InventoryItemComponent key={item.id} item={item} />
                     ))}
                   </div>
@@ -381,7 +405,6 @@ export const CharacterPage = () => {
               </CardContent>
             </Card>
 
-            {/* Total Weight Summary */}
             <Card className="bg-wood-dark/80 border-copper backdrop-blur-sm lg:col-span-2">
               <CardHeader>
                 <CardTitle className="text-2xl font-cinzel text-parchment">Weight Summary</CardTitle>
@@ -410,7 +433,7 @@ export const CharacterPage = () => {
               </CardContent>
             </Card>
           </div>
-
+          
           <div className="mt-8 text-center">
             <Button 
               variant="outline" 
