@@ -25,7 +25,7 @@ const getModifier = (score: number): string => {
 export const getCharacter = async (id: string): Promise<Character> => {
   try {
     // Use the generic <Character> to type the expected response data
-    const response = await axios.get<Character>(`http://localhost:5181/api/character/${id}`);
+    const response = await axios.get<Character>(`http://dndackendapiservice:8080/api/character/${id}`);
 
     // response.data is now strongly typed as Character
     return response.data;
@@ -52,7 +52,7 @@ export const CharacterPage = () => {
     const fetchCharacterData = async () => {
       try {
         // Use the generic <Character> to tell axios the expected response type
-        const response = await axios.get<Character>(`http://localhost:5181/api/character/${id}`);
+        const response = await axios.get<Character>(`http://dndackendapiservice:8080/api/character/${id}`);
 
         // The promise has resolved. Set the character data in state.
         

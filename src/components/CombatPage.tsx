@@ -86,7 +86,7 @@ const CombatPage: React.FC = () => {
       maxHp: 37,
       currentHp: 37,
       initiative: 12,
-      position: { x: 15, y: 4 },
+      position: { x: 5, y: 4 },
       movement: 50,
       equipment: ['Natural Weapons'],
       actions: [
@@ -107,7 +107,7 @@ const CombatPage: React.FC = () => {
       maxHp: 37,
       currentHp: 37,
       initiative: 8,
-      position: { x: 16, y: 6 },
+      position: { x: 6, y: 6 },
       movement: 50,
       equipment: ['Natural Weapons'],
       actions: [
@@ -164,7 +164,7 @@ const CombatPage: React.FC = () => {
       
       for (let i = 0; i < playerIds.length; i++) {
         const playerId = playerIds[i];
-        const playerCombatant = await getCombantantById(playerId, 2 + i, 10 + i);
+        const playerCombatant = await getCombantantById(playerId, 2 + i, 1 + i);
         if (playerCombatant) {
           playerCombatant.initiative = 20 - i; // Descending initiative
           playerCombatants.push(playerCombatant);
@@ -193,8 +193,8 @@ const CombatPage: React.FC = () => {
 
   const createGrid = (): GridPosition[] => {
     const grid: GridPosition[] = [];
-    for (let y = 0; y < 20; y++) {
-      for (let x = 0; x < 20; x++) {
+    for (let y = 0; y < 10; y++) {
+      for (let x = 0; x < 10; x++) {
         const occupied = combatants.find(c => c.position.x === x && c.position.y === y)?.id;
         grid.push({ x, y, occupied });
       }
@@ -539,10 +539,10 @@ const CombatPage: React.FC = () => {
               <Button onClick={resetPartySelection} variant="outline" size="sm">
                 ← Back to Party Selection
               </Button>
-              <h2 className="text-xl font-cinzel font-semibold text-parchment">Arena (20x20 Grid)</h2>
+              <h2 className="text-xl font-cinzel font-semibold text-parchment">Arena (10x10 Grid)</h2>
             </div>
             <div className="bg-wood-light/30 p-4 rounded-lg border-2 border-copper">
-              <div className="grid grid-cols-20 gap-1 w-[640px] h-[640px]">
+              <div className="grid grid-cols-10 gap-1 w-[640px] h-[640px]">
                 {grid.map((cell, idx) => {
                   const combatant = combatants.find(c => c.position.x === cell.x && c.position.y === cell.y);
                   const isValidMove = currentCombatant?.isMoving && 
