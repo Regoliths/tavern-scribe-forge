@@ -4,9 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Sword, Shield, Heart, Move, Target } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import {getCharacter} from "@/components/CharacterPage.tsx";
+import {Character} from "@/models/Character.ts";
+import {Item} from "@/models/Item.ts";
 
 interface Combatant {
-  id: string;
+  id: number;
   name: string;
   type: 'player' | 'npc';
   ac: number;
@@ -27,37 +30,60 @@ interface Combatant {
 interface GridPosition {
   x: number;
   y: number;
-  occupied?: string; // combatant id
+  occupied?: number; // combatant id
 }
+
+const createCombatant = (character: Character): Combatant => ({
+    id: character.id,
+    name: character.name,
+    type: 'player',
+    ac: character.armorClass,
+    maxHp: character.maxHitPoints,
+    currentHp: character.hitPoints,
+    initiative: character.initiative,
+    position: { x: 1, y: 5 },
+    movement: character.speed,
+    equipment: [""],
+    actions: [
+      { name: 'Ranged Attack', range: 150, attackBonus: 6, damage: '1d8+4' },
+      { name: 'Hide', range: 0, attackBonus: 0, damage: '' },
+      { name: 'Dash', range: 0, attackBonus: 0, damage: '' }
+    ],
+    isMoving: false,
+    isTargeting: false,
+    selectedAction: null,
+    hasMovedThisTurn: false,
+    hasActedThisTurn: false
+    });
 
 const CombatPage: React.FC = () => {
   const { toast } = useToast();
   const [combatants, setCombatants] = useState<Combatant[]>([
     // Players
     {
-      id: 'player1',
-      name: 'Aragorn',
-      type: 'player',
-      ac: 18,
-      maxHp: 45,
-      currentHp: 45,
-      initiative: 15,
-      position: { x: 2, y: 8 },
-      movement: 30,
-      equipment: ['Longsword', 'Chain Mail', 'Shield'],
-      actions: [
-        { name: 'Attack', range: 5, attackBonus: 5, damage: '1d8+3' },
-        { name: 'Dodge', range: 0, attackBonus: 0, damage: '' },
-        { name: 'Dash', range: 0, attackBonus: 0, damage: '' }
-      ],
-      isMoving: false,
-      isTargeting: false,
-      selectedAction: null,
-      hasMovedThisTurn: false,
-      hasActedThisTurn: false
+        id: 1,
+        name: 'Aragorn',
+        type: 'player',
+        ac: 18,
+        maxHp: 45,
+        currentHp: 45,
+        initiative: 20,
+        position: { x: 2, y: 5 },
+        movement: 30,
+        equipment: ['Sword', 'Shield', 'Leather Armor'],
+        actions: [
+            { name: 'Melee Attack', range: 5, attackBonus: 5, damage: '1d8+3' },
+            { name: 'Dodge', range: 0, attackBonus: 0, damage: '' },
+            { name: 'Dash', range: 0, attackBonus: 0, damage: '' }
+        ],
+        isMoving: false,
+        isTargeting: false,
+        selectedAction: null,
+        hasMovedThisTurn: false,
+        hasActedThisTurn: false
     },
     {
-      id: 'player2',
+      id: 2,
       name: 'Legolas',
       type: 'player',
       ac: 16,
@@ -80,7 +106,7 @@ const CombatPage: React.FC = () => {
     },
     // NPCs
     {
-      id: 'direwolf1',
+      id: 3,
       name: 'Direwolf Alpha',
       type: 'npc',
       ac: 14,
@@ -101,7 +127,7 @@ const CombatPage: React.FC = () => {
       hasActedThisTurn: false
     },
     {
-      id: 'direwolf2',
+      id: 4,
       name: 'Direwolf',
       type: 'npc',
       ac: 14,
@@ -142,7 +168,7 @@ const CombatPage: React.FC = () => {
 
   const grid = createGrid();
 
-  const handleMovement = (combatantId: string) => {
+  const handleMovement = (combatantId: number) => {
     const combatant = combatants.find(c => c.id === combatantId);
     if (!combatant || combatant.hasMovedThisTurn) return;
     
@@ -151,7 +177,7 @@ const CombatPage: React.FC = () => {
     ));
   };
 
-  const handleAction = (combatantId: string, action: { name: string; range: number; attackBonus: number; damage: string }) => {
+  const handleAction = (combatantId: number, action: { name: string; range: number; attackBonus: number; damage: string }) => {
     const combatant = combatants.find(c => c.id === combatantId);
     if (!combatant || combatant.hasActedThisTurn) return;
     
@@ -194,7 +220,7 @@ const CombatPage: React.FC = () => {
     return total;
   };
 
-  const attackTarget = (targetId: string) => {
+  const attackTarget = (targetId: number) => {
     const attacker = currentCombatant;
     const target = combatants.find(c => c.id === targetId);
     const action = attacker.actions.find(a => a.name === attacker.selectedAction);

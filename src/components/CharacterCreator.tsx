@@ -8,26 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import tavernBackground from "@/assets/tavern-background.jpg";
 import axios from "axios"; // Import axios for making HTTP requests
-
-interface Character {
-  name: string;
-  race: string;
-  class: string;
-  background: string;
-  alignment: string;
-  level: number;
-  strength: number;
-  dexterity: number;
-  constitution: number;
-  intelligence: number;
-  wisdom: number;
-  charisma: number;
-  hitPoints: number;
-  maxHitPoints: number; // Optional for future use
-  armorClass: number;
-  speed: number;
-  notes: string;
-}
+import {CharacterDto} from "@/models/CharacterDto.ts";
 
 const races = [
   "Human", "Elf", "Dwarf", "Halfling", "Dragonborn", "Gnome", "Half-Elf", 
@@ -67,7 +48,7 @@ const alignments = [
 ];
 
 export function CharacterCreator() {
-  const [character, setCharacter] = useState<Character>({
+  const [character, setCharacter] = useState<CharacterDto>({
     name: "",
     race: "",
     class: "",
@@ -87,7 +68,7 @@ export function CharacterCreator() {
     notes: ""
   });
 
-  const updateCharacter = (field: keyof Character, value: string | number) => {
+  const updateCharacter = (field: keyof CharacterDto, value: string | number) => {
     setCharacter(prev => ({ ...prev, [field]: value }));
   };
 
@@ -95,7 +76,7 @@ export function CharacterCreator() {
     return Math.floor((score - 10) / 2);
   };
 
-  const rollAbilityScore = (ability: keyof Character) => {
+  const rollAbilityScore = (ability: keyof CharacterDto) => {
     // Roll 4d6, drop lowest
     const rolls = Array(4).fill(0).map(() => Math.floor(Math.random() * 6) + 1);
     rolls.sort((a, b) => b - a);
@@ -282,17 +263,17 @@ export function CharacterCreator() {
                       type="number"
                       min="3"
                       max="20"
-                      value={character[ability as keyof Character]}
-                      onChange={(e) => updateCharacter(ability as keyof Character, parseInt(e.target.value) || 10)}
+                      value={character[ability as keyof CharacterDto]}
+                      onChange={(e) => updateCharacter(ability as keyof CharacterDto, parseInt(e.target.value) || 10)}
                       className="w-16 bg-parchment/10 border-copper text-parchment text-center"
                     />
                     <Badge variant="outline" className="border-gold text-gold min-w-[40px] text-center">
-                      {getModifier(character[ability as keyof Character] as number) >= 0 ? '+' : ''}
-                      {getModifier(character[ability as keyof Character] as number)}
+                      {getModifier(character[ability as keyof CharacterDto] as number) >= 0 ? '+' : ''}
+                      {getModifier(character[ability as keyof CharacterDto] as number)}
                     </Badge>
                     <Button
                       size="sm"
-                      onClick={() => rollAbilityScore(ability as keyof Character)}
+                      onClick={() => rollAbilityScore(ability as keyof CharacterDto)}
                       className="bg-copper hover:bg-copper/80 text-parchment shadow-inset"
                     >
                       Roll
@@ -305,7 +286,7 @@ export function CharacterCreator() {
                 className="w-full bg-gradient-gold text-background hover:shadow-glow-gold"
                 onClick={() => {
                   ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"].forEach(ability => {
-                    rollAbilityScore(ability as keyof Character);
+                    rollAbilityScore(ability as keyof CharacterDto);
                   });
                 }}
               >
@@ -433,11 +414,11 @@ export function CharacterCreator() {
                   <div key={ability} className="text-center">
                     <p className="font-semibold text-wood-dark capitalize text-sm">{ability.slice(0, 3)}</p>
                     <p className="text-2xl font-bold text-copper">
-                      {character[ability as keyof Character]}
+                      {character[ability as keyof CharacterDto]}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      ({getModifier(character[ability as keyof Character] as number) >= 0 ? '+' : ''}
-                      {getModifier(character[ability as keyof Character] as number)})
+                      ({getModifier(character[ability as keyof CharacterDto] as number) >= 0 ? '+' : ''}
+                      {getModifier(character[ability as keyof CharacterDto] as number)})
                     </p>
                   </div>
                 ))}
