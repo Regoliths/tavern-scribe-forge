@@ -5,33 +5,34 @@ FROM node:20-alpine as builder
 # Set the working directory inside the container
 WORKDIR /app
 
-# Copy package.json and package-lock.json (or npm-shrinkwrap.json)
-# This leverages Docker's layer caching. If these files don't change,
-# 'npm install' won't run again on subsequent builds, speeding things up.
+# Copy package.json and package-lock.json to leverage Docker's layer caching.
 COPY package*.json ./
+
+# Install dependencies. This step is only re-run if package files change.
 RUN npm install
 
 # Copy the rest of the application's source code
 COPY . .
 
-# Run the production build script defined in package.json (usually 'vite build')
+# Run the production build script defined in package.json. This creates the static files.
 RUN npm run build
 
 
 # ---- Stage 2: Serve the application with Nginx ----
-# Use a lightweight and stable version of Nginx
+# This stage creates the final, small, and secure production image.
 FROM nginx:stable-alpine
 
-# Copy the built static files from the 'builder' stage to the default Nginx public directory
+# Copy the built static files from the 'builder' stage into the Nginx server's root directory.
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# For Single Page Applications (SPA) like React, Nginx needs to be configured
-# to redirect all routes to index.html to let React Router handle them.
-# Copy a custom nginx configuration file into the container.
+# Copy the Nginx configuration. This file is crucial for making sure the
+# Nginx server inside the container correctly handles SPA routing by
+# redirecting all requests to index.html.
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Expose port 80 to the outside world
+# Expose port 80. This declares that the container listens on port 80.
+# The Kubernetes Service will target this port.
 EXPOSE 80
 
-# The default command for the nginx image is to start the server, so CMD is not needed.```
-
+# The default command for the nginx image is to start the server, so an explicit CMD is not needed.
+# It automatically runs `nginx -g 'daemon off;'`

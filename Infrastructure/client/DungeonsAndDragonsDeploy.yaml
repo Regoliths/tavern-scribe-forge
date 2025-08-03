@@ -1,0 +1,36 @@
+﻿apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dndclientdeploy
+  namespace: dungeonsanddragons
+  labels:
+    app: dnd
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: dndclient
+  template:
+    metadata:
+      name: dndclient
+      labels:
+        app: dndclient
+    spec:
+      containers:
+        - name: dndclient
+          image: ghcr.io/regoliths/tavern-scribe-forge:main
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+              protocol: TCP
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "250m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+      imagePullSecrets:
+        - name: ghcr-login-secret
+      restartPolicy: Always
+      
