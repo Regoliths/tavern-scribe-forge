@@ -93,7 +93,7 @@ export function CharacterCreator() {
       actions: []
     };
     try {
-        await axios.post("/api/character", characterCreateDto);
+        await axios.post("http://dndbackendapi/api/character", characterCreateDto);
         alert("Character saved successfully!");
       } catch (error) {
         console.error("Error saving character:", error);
