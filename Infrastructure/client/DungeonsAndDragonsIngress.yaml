@@ -1,0 +1,26 @@
+﻿apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dnd-client-ingress
+  namespace: dungeonsanddragons
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: dnd.digital-garage.dk
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: dndclient
+                port:
+                  name: http
+  tls:
+    - hosts:
+        - dnd.digital-garage.dk
+      secretName: dnd-tls # as expected by argocd-server
