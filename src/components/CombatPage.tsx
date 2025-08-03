@@ -20,6 +20,8 @@ interface Combatant {
   isMoving: boolean;
   isTargeting: boolean;
   selectedAction: string | null;
+  hasMoved?: boolean; // Track if combatant has already moved this turn
+  hasAttacked?: boolean; // Track if combatant has already attacked this turn
 }
 
 interface GridPosition {
@@ -49,6 +51,8 @@ const CombatPage: React.FC = () => {
         { name: 'Dash', range: 0, attackBonus: 0, damage: '' }
       ],
       isMoving: false,
+      hasMoved: false,
+      hasAttacked: false,
       isTargeting: false,
       selectedAction: null
     },
@@ -69,6 +73,8 @@ const CombatPage: React.FC = () => {
         { name: 'Dash', range: 0, attackBonus: 0, damage: '' }
       ],
       isMoving: false,
+      hasMoved: false,
+      hasAttacked: false,
       isTargeting: false,
       selectedAction: null
     },
@@ -89,6 +95,8 @@ const CombatPage: React.FC = () => {
         { name: 'Knockdown', range: 5, attackBonus: 4, damage: '1d4+3' }
       ],
       isMoving: false,
+      hasMoved: false,
+      hasAttacked: false,
       isTargeting: false,
       selectedAction: null
     },
@@ -107,6 +115,8 @@ const CombatPage: React.FC = () => {
         { name: 'Bite', range: 5, attackBonus: 4, damage: '2d6+2' }
       ],
       isMoving: false,
+      hasMoved: false,
+      hasAttacked: false,
       isTargeting: false,
       selectedAction: null
     }
@@ -133,6 +143,7 @@ const CombatPage: React.FC = () => {
   const grid = createGrid();
 
   const handleMovement = (combatantId: string) => {
+    
     setCombatants(prev => prev.map(c => 
       c.id === combatantId ? { ...c, isMoving: !c.isMoving, isTargeting: false, selectedAction: null } : { ...c, isMoving: false, isTargeting: false, selectedAction: null }
     ));

@@ -23,6 +23,7 @@ interface Character {
   wisdom: number;
   charisma: number;
   hitPoints: number;
+  maxHitPoints: number; // Optional for future use
   armorClass: number;
   speed: number;
   notes: string;
@@ -80,6 +81,7 @@ export function CharacterCreator() {
     wisdom: 10,
     charisma: 10,
     hitPoints: 8,
+    maxHitPoints: 8, // Optional for future use
     armorClass: 10,
     speed: 30,
     notes: ""

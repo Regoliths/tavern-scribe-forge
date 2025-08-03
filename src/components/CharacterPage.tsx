@@ -106,6 +106,7 @@ interface Character {
   wisdom: number;
   charisma: number;
   hitPoints: number;
+  maxHitPoints: number;
   armorClass: number;
   speed: number;
   notes: string;
@@ -137,6 +138,7 @@ const mockCharacter: Character = {
   wisdom: 13,
   charisma: 8,
   hitPoints: 45,
+  maxHitPoints: 45,
   armorClass: 18,
   speed: 25,
   notes: "A stalwart defender of the realm, wielding the ancestral hammer of his clan."
@@ -324,7 +326,7 @@ export const CharacterPage = () => {
                   <div className="text-center">
                     <div className="bg-parchment/10 border border-copper rounded p-3">
                       <div className="text-sm font-medium text-copper mb-1">Hit Points</div>
-                      <div className="text-2xl font-bold text-parchment">{character.hitPoints}</div>
+                      <div className="text-2xl font-bold text-parchment">{character.hitPoints} / {character.maxHitPoints}</div>
                     </div>
                   </div>
                   <div className="text-center">
