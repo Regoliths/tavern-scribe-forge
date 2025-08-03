@@ -140,6 +140,13 @@ const CombatPage: React.FC = () => {
     loadPlayerCombatants();
   }, []);
 
+  // Reset turn index when combatants change to ensure highest initiative goes first
+  useEffect(() => {
+    if (combatants.length > 0) {
+      setCurrentTurnIndex(0);
+    }
+  }, [combatants.length]);
+
   const [currentTurnIndex, setCurrentTurnIndex] = useState(0);
   const [selectedCombatant, setSelectedCombatant] = useState<string | null>(null);
 
