@@ -17,9 +17,8 @@ spec:
           pathType: Prefix
           backend:
             service:
-              name: dndackendapi
+              name: dndbackendapi
               port:
-                # The port your .NET Service is listening on (usually 80 for HTTP)
                 number: 80
         - path: /
           pathType: Prefix
