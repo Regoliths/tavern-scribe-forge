@@ -13,13 +13,21 @@ spec:
     - host: dnd.digital-garage.dk
       http:
         paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: dndclient
-                port:
-                  name: http
+        - path: /api
+          pathType: Prefix
+          backend:
+            service:
+              name: dndackendapi
+              port:
+                # The port your .NET Service is listening on (usually 80 for HTTP)
+                number: 80
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: dndclient
+              port:
+                number: 80
   tls:
     - hosts:
         - dnd.digital-garage.dk
