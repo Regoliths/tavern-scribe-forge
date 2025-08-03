@@ -20,6 +20,8 @@ interface Combatant {
   isMoving: boolean;
   isTargeting: boolean;
   selectedAction: string | null;
+  hasMovedThisTurn: boolean;
+  hasActedThisTurn: boolean;
 }
 
 interface GridPosition {
@@ -50,7 +52,9 @@ const CombatPage: React.FC = () => {
       ],
       isMoving: false,
       isTargeting: false,
-      selectedAction: null
+      selectedAction: null,
+      hasMovedThisTurn: false,
+      hasActedThisTurn: false
     },
     {
       id: 'player2',
@@ -70,7 +74,9 @@ const CombatPage: React.FC = () => {
       ],
       isMoving: false,
       isTargeting: false,
-      selectedAction: null
+      selectedAction: null,
+      hasMovedThisTurn: false,
+      hasActedThisTurn: false
     },
     // NPCs
     {
@@ -90,7 +96,9 @@ const CombatPage: React.FC = () => {
       ],
       isMoving: false,
       isTargeting: false,
-      selectedAction: null
+      selectedAction: null,
+      hasMovedThisTurn: false,
+      hasActedThisTurn: false
     },
     {
       id: 'direwolf2',
@@ -108,7 +116,9 @@ const CombatPage: React.FC = () => {
       ],
       isMoving: false,
       isTargeting: false,
-      selectedAction: null
+      selectedAction: null,
+      hasMovedThisTurn: false,
+      hasActedThisTurn: false
     }
   ]);
 
@@ -133,17 +143,26 @@ const CombatPage: React.FC = () => {
   const grid = createGrid();
 
   const handleMovement = (combatantId: string) => {
+    const combatant = combatants.find(c => c.id === combatantId);
+    if (!combatant || combatant.hasMovedThisTurn) return;
+    
     setCombatants(prev => prev.map(c => 
       c.id === combatantId ? { ...c, isMoving: !c.isMoving, isTargeting: false, selectedAction: null } : { ...c, isMoving: false, isTargeting: false, selectedAction: null }
     ));
   };
 
   const handleAction = (combatantId: string, action: { name: string; range: number; attackBonus: number; damage: string }) => {
+    const combatant = combatants.find(c => c.id === combatantId);
+    if (!combatant || combatant.hasActedThisTurn) return;
+    
     if (action.range === 0) {
       // Non-attack actions (Dodge, Dash, Hide)
+      setCombatants(prev => prev.map(c => 
+        c.id === combatantId ? { ...c, hasActedThisTurn: true } : c
+      ));
       toast({
         title: "Action Taken",
-        description: `${combatants.find(c => c.id === combatantId)?.name} used ${action.name}!`,
+        description: `${combatant.name} used ${action.name}!`,
       });
       return;
     }
@@ -204,7 +223,7 @@ const CombatPage: React.FC = () => {
       
       setCombatants(prev => prev.map(c => 
         c.id === targetId ? { ...c, currentHp: newHp } : 
-        c.id === attacker.id ? { ...c, isTargeting: false, selectedAction: null } : c
+        c.id === attacker.id ? { ...c, isTargeting: false, selectedAction: null, hasActedThisTurn: true } : c
       ));
       
       toast({
@@ -242,7 +261,7 @@ const CombatPage: React.FC = () => {
     if (distance <= maxTiles && !grid.find(g => g.x === x && g.y === y && g.occupied)) {
       setCombatants(prev => prev.map(c => 
         c.id === currentCombatant.id 
-          ? { ...c, position: { x, y }, isMoving: false }
+          ? { ...c, position: { x, y }, isMoving: false, hasMovedThisTurn: true }
           : c
       ));
     }
@@ -250,7 +269,7 @@ const CombatPage: React.FC = () => {
 
   const nextTurn = () => {
     setCurrentTurnIndex((prev) => (prev + 1) % initiativeOrder.length);
-    setCombatants(prev => prev.map(c => ({ ...c, isMoving: false, isTargeting: false, selectedAction: null })));
+    setCombatants(prev => prev.map(c => ({ ...c, isMoving: false, isTargeting: false, selectedAction: null, hasMovedThisTurn: false, hasActedThisTurn: false })));
   };
 
   const CombatantCard: React.FC<{ combatant: Combatant; isCurrentTurn: boolean }> = ({ combatant, isCurrentTurn }) => {
@@ -296,9 +315,10 @@ const CombatPage: React.FC = () => {
                 variant={combatant.isMoving ? "default" : "outline"}
                 onClick={() => handleMovement(combatant.id)}
                 className="flex items-center gap-1"
+                disabled={combatant.hasMovedThisTurn}
               >
                 <Move className="h-3 w-3" />
-                Move ({Math.floor(combatant.movement / 5)} tiles)
+                Move ({Math.floor(combatant.movement / 5)} tiles) {combatant.hasMovedThisTurn && '✓'}
               </Button>
               {combatant.actions.map((action, idx) => (
                 <Button 
@@ -307,9 +327,10 @@ const CombatPage: React.FC = () => {
                   variant={combatant.isTargeting && combatant.selectedAction === action.name ? "default" : "outline"}
                   onClick={() => handleAction(combatant.id, action)}
                   className="flex items-center gap-1"
+                  disabled={combatant.hasActedThisTurn}
                 >
                   {action.range > 0 ? <Target className="h-3 w-3" /> : <Sword className="h-3 w-3" />}
-                  {action.name}
+                  {action.name} {combatant.hasActedThisTurn && '✓'}
                 </Button>
               ))}
             </div>
@@ -352,7 +373,7 @@ const CombatPage: React.FC = () => {
           <div className="flex flex-col items-center">
             <h2 className="text-xl font-cinzel font-semibold text-parchment mb-4">Arena (10x10 Grid)</h2>
             <div className="bg-wood-light/30 p-4 rounded-lg border-2 border-copper">
-              <div className="grid grid-cols-10 gap-0.5 w-80 h-80">
+              <div className="grid grid-cols-10 gap-1 w-[640px] h-[640px]">
                 {grid.map((cell, idx) => {
                   const combatant = combatants.find(c => c.position.x === cell.x && c.position.y === cell.y);
                   const isValidMove = currentCombatant.isMoving && 
@@ -366,7 +387,7 @@ const CombatPage: React.FC = () => {
                     <div
                       key={idx}
                       className={`
-                        w-7 h-7 border border-copper/50 flex items-center justify-center text-xs font-bold cursor-pointer
+                        w-[60px] h-[60px] border border-copper/50 flex items-center justify-center text-xs font-bold cursor-pointer
                         ${combatant ? 
                           (combatant.currentHp === 0 ? 'bg-gray-500 text-gray-300' :
                            combatant.type === 'player' ? 'bg-blue-500 text-white' : 'bg-red-500 text-white') 
