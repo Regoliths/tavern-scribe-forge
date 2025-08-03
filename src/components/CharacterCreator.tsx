@@ -8,7 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import tavernBackground from "@/assets/tavern-background.jpg";
 import axios from "axios"; // Import axios for making HTTP requests
-import {CharacterDto} from "@/models/CharacterDto.ts";
+import {CharacterCreateDto, CharacterDto} from "@/models/CharacterDto.ts";
+import {Character} from "@/models/Character.ts";
 
 const races = [
   "Human", "Elf", "Dwarf", "Halfling", "Dragonborn", "Gnome", "Half-Elf", 
@@ -67,6 +68,40 @@ export function CharacterCreator() {
     speed: 30,
     notes: ""
   });
+
+  async function createCharacter(character : CharacterDto)  {
+    var characterCreateDto: CharacterCreateDto = {
+      name: character.name,
+      race: races.indexOf(character.race),
+      class: classes.indexOf(character.class),
+      background: backgrounds.indexOf(character.background),
+      alignment: alignments.indexOf(character.alignment),
+      level: character.level,
+      strength: character.strength,
+      dexterity: character.dexterity,
+      constitution: character.constitution,
+      intelligence: character.intelligence,
+      wisdom: character.wisdom,
+      charisma: character.charisma,
+      hitPoints: character.hitPoints,
+      maxHitPoints: character.hitPoints,
+      armorClass: character.armorClass,
+      speed: character.speed,
+      notes: character.notes,
+      equipment: { characterId: 0, items: [], totalWeight: 0 },
+      inventory: { characterId: 0, items: [], totalWeight: 0 },
+      actions: []
+    };
+    try {
+        await axios.post("http://localhost:5181/api/character", characterCreateDto);
+        alert("Character saved successfully!");
+      } catch (error) {
+        console.error("Error saving character:", error);
+        alert("Failed to save character.");
+      }
+    }
+  
+
 
   const updateCharacter = (field: keyof CharacterDto, value: string | number) => {
     setCharacter(prev => ({ ...prev, [field]: value }));
@@ -377,15 +412,7 @@ export function CharacterCreator() {
 
               <Button
                   className="w-full bg-gradient-gold text-background hover:shadow-glow-gold"
-                  onClick={async () => {
-                    try {
-                      await axios.post("http://localhost:5181/api/character", character);
-                      alert("Character saved successfully!");
-                    } catch (error) {
-                      console.error("Error saving character:", error);
-                      alert("Failed to save character.");
-                    }
-                  }}
+                  onClick={() => createCharacter(character)}
               >
                 Save Character
               </Button>

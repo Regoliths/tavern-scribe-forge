@@ -12,30 +12,6 @@ interface CharacterPageProps {
   characterId: string;
 }
 
-// Mock character data - in a real app, this would come from your backend/Supabase
-
-const mockCharacter: Character = {
-  name: "Thorin Ironforge",
-  race: Race.Dwarf,
-  class: Class.Fighter,
-  background: Background["Soldier"],
-  alignment: Alignment["Lawful Good"],
-  level: 5,
-  strength: 16,
-  dexterity: 12,
-  constitution: 15,
-  intelligence: 10,
-  wisdom: 13,
-  charisma: 8,
-  hitPoints: 45,
-  maxHitPoints: 45,
-  armorClass: 18,
-  speed: 25,
-  notes: "A stalwart defender of the realm, wielding the ancestral hammer of his clan."
-}; 
-
-
-
 const getModifier = (score: number): string => {
   const modifier = Math.floor((score - 10) / 2);
   return modifier >= 0 ? `+${modifier}` : `${modifier}`;
@@ -259,7 +235,7 @@ export const CharacterPage = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {character?.equipment?.items && character.equipment.items.length >= 0 ? (
+                {character.equipment && character.equipment.items.length > 0 ? (
                   <div className="space-y-2">
                     {character.equipment.items.map((item) => (
                       <InventoryItemComponent key={item.id} item={item} />

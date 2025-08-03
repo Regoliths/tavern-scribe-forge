@@ -33,34 +33,45 @@ interface GridPosition {
   occupied?: number; // combatant id
 }
 
-const createCombatant = (character: Character): Combatant => ({
-    id: character.id,
-    name: character.name,
-    type: 'player',
-    ac: character.armorClass,
-    maxHp: character.maxHitPoints,
-    currentHp: character.hitPoints,
-    initiative: character.initiative,
-    position: { x: 1, y: 5 },
-    movement: character.speed,
-    equipment: [""],
-    actions: [
-      { name: 'Ranged Attack', range: 150, attackBonus: 6, damage: '1d8+4' },
-      { name: 'Hide', range: 0, attackBonus: 0, damage: '' },
-      { name: 'Dash', range: 0, attackBonus: 0, damage: '' }
-    ],
-    isMoving: false,
-    isTargeting: false,
-    selectedAction: null,
-    hasMovedThisTurn: false,
-    hasActedThisTurn: false
-    });
+const getCombantantById = async (combatantId: number, positionX: number, positionY: number): Combatant | undefined => {
+  try {
+    var combatant = await getCharacter(combatantId.toString());
+    return {
+      id: combatant.id,
+      name: combatant.name,
+      type: 'player', // Assuming all combatants are players for now
+      ac: combatant.armorClass,
+      maxHp: combatant.maxHitPoints,
+      currentHp: combatant.hitPoints,
+      initiative: 0, // Initiative can be set later
+      position: {x: positionX, y: positionY}, // Initial position can be set later
+      movement: 30, // Default movement speed
+      equipment: combatant.equipment?.items.map((item: Item) => item.name) || [],
+      actions: combatant.actions.map(action => ({
+        name: action.name,
+        description: action.description,
+        range: action.range ? parseInt(action.range) : 0,
+        attackBonus: action.attackBonus || 0,
+        damage: `${action.diceCount}d${action.diceSize}${action.damageType ? ` ${action.damageType}` : ''}`
+      })),
+      isMoving: false,
+      isTargeting: false,
+      selectedAction: null,
+      hasMovedThisTurn: false,
+      hasActedThisTurn: false
+    };
+  } catch (error) {
+    console.error("Error fetching combatant:", error);
+    return undefined;
+  }
+}
 
 const CombatPage: React.FC = () => {
   const { toast } = useToast();
   const [combatants, setCombatants] = useState<Combatant[]>([
-    // Players
-    {
+    getCombantantById(1, 2, 5),
+    getCombantantById(2, 1, 7),
+    /*{
         id: 1,
         name: 'Aragorn',
         type: 'player',
@@ -103,7 +114,7 @@ const CombatPage: React.FC = () => {
       selectedAction: null,
       hasMovedThisTurn: false,
       hasActedThisTurn: false
-    },
+    },*/
     // NPCs
     {
       id: 3,
