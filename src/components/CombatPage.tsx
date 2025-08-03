@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Sword, Shield, Heart, Move, Target } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Sword, Shield, Heart, Move, Target, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useSearchParams } from 'react-router-dom';
 import {getCharacter} from "@/components/CharacterPage.tsx";
-import {Character} from "@/models/Character.ts";
+import {Character, Race, Class} from "@/models/Character.ts";
 import {Item} from "@/models/Item.ts";
 
 interface Combatant {
@@ -68,17 +70,23 @@ const getCombantantById = async (combatantId: number, positionX: number, positio
 
 const CombatPage: React.FC = () => {
   const { toast } = useToast();
-  const [combatants, setCombatants] = useState<Combatant[]>([
-    // NPCs
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState<number[]>([]);
+  const [availablePlayers, setAvailablePlayers] = useState<Character[]>([]);
+  const [combatStarted, setCombatStarted] = useState(false);
+  const [combatants, setCombatants] = useState<Combatant[]>([]);
+
+  // Initialize NPCs with IDs starting at 100
+  const npcs: Combatant[] = [
     {
-      id: 3,
+      id: 100,
       name: 'Direwolf Alpha',
       type: 'npc',
       ac: 14,
       maxHp: 37,
       currentHp: 37,
       initiative: 12,
-      position: { x: 7, y: 2 },
+      position: { x: 15, y: 4 },
       movement: 50,
       equipment: ['Natural Weapons'],
       actions: [
@@ -92,14 +100,14 @@ const CombatPage: React.FC = () => {
       hasActedThisTurn: false
     },
     {
-      id: 4,
+      id: 101,
       name: 'Direwolf',
       type: 'npc',
       ac: 14,
       maxHp: 37,
       currentHp: 37,
       initiative: 8,
-      position: { x: 8, y: 3 },
+      position: { x: 16, y: 6 },
       movement: 50,
       equipment: ['Natural Weapons'],
       actions: [
@@ -111,34 +119,63 @@ const CombatPage: React.FC = () => {
       hasMovedThisTurn: false,
       hasActedThisTurn: false
     }
-  ]);
+  ];
 
-  // Load player combatants asynchronously
+  // Load available players on component mount
   useEffect(() => {
-    const loadPlayerCombatants = async () => {
+    const loadAvailablePlayers = async () => {
       try {
-        const player1 = await getCombantantById(1, 2, 5);
-        const player2 = await getCombantantById(2, 1, 7);
-        
-        setCombatants(prev => {
-          const newCombatants = [...prev];
-          if (player1) {
-            player1.initiative = 20; // Set initiative for player 1
-            newCombatants.push(player1);
+        const players: Character[] = [];
+        for (let i = 1; i <= 10; i++) {
+          try {
+            const player = await getCharacter(i.toString());
+            if (player) {
+              players.push(player);
+            }
+          } catch (error) {
+            // Player doesn't exist, continue
           }
-          if (player2) {
-            player2.initiative = 18; // Set initiative for player 2
-            newCombatants.push(player2);
-          }
-          return newCombatants;
-        });
+        }
+        setAvailablePlayers(players);
       } catch (error) {
-        console.error('Error loading player combatants:', error);
+        console.error('Error loading available players:', error);
       }
     };
 
-    loadPlayerCombatants();
+    loadAvailablePlayers();
   }, []);
+
+  // Check URL params for selected players
+  useEffect(() => {
+    const playersParam = searchParams.get('players');
+    if (playersParam) {
+      const playerIds = playersParam.split(',').map(id => parseInt(id)).filter(id => !isNaN(id));
+      if (playerIds.length > 0) {
+        setSelectedPlayerIds(playerIds);
+        setCombatStarted(true);
+        loadCombat(playerIds);
+      }
+    }
+  }, [searchParams]);
+
+  const loadCombat = async (playerIds: number[]) => {
+    try {
+      const playerCombatants: Combatant[] = [];
+      
+      for (let i = 0; i < playerIds.length; i++) {
+        const playerId = playerIds[i];
+        const playerCombatant = await getCombantantById(playerId, 2 + i, 10 + i);
+        if (playerCombatant) {
+          playerCombatant.initiative = 20 - i; // Descending initiative
+          playerCombatants.push(playerCombatant);
+        }
+      }
+      
+      setCombatants([...npcs, ...playerCombatants]);
+    } catch (error) {
+      console.error('Error loading combat:', error);
+    }
+  };
 
   // Reset turn index when combatants change to ensure highest initiative goes first
   useEffect(() => {
@@ -156,8 +193,8 @@ const CombatPage: React.FC = () => {
 
   const createGrid = (): GridPosition[] => {
     const grid: GridPosition[] = [];
-    for (let y = 0; y < 10; y++) {
-      for (let x = 0; x < 10; x++) {
+    for (let y = 0; y < 20; y++) {
+      for (let x = 0; x < 20; x++) {
         const occupied = combatants.find(c => c.position.x === x && c.position.y === y)?.id;
         grid.push({ x, y, occupied });
       }
@@ -297,6 +334,39 @@ const CombatPage: React.FC = () => {
     setCombatants(prev => prev.map(c => ({ ...c, isMoving: false, isTargeting: false, selectedAction: null, hasMovedThisTurn: false, hasActedThisTurn: false })));
   };
 
+  const handlePlayerSelection = (playerId: number, isSelected: boolean) => {
+    if (isSelected) {
+      if (selectedPlayerIds.length < 4) {
+        setSelectedPlayerIds([...selectedPlayerIds, playerId]);
+      }
+    } else {
+      setSelectedPlayerIds(selectedPlayerIds.filter(id => id !== playerId));
+    }
+  };
+
+  const startCombat = () => {
+    if (selectedPlayerIds.length === 0) {
+      toast({
+        title: "No Players Selected",
+        description: "Please select at least one player to start combat.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const playersParam = selectedPlayerIds.join(',');
+    setSearchParams({ players: playersParam });
+    setCombatStarted(true);
+    loadCombat(selectedPlayerIds);
+  };
+
+  const resetPartySelection = () => {
+    setSelectedPlayerIds([]);
+    setCombatStarted(false);
+    setCombatants([]);
+    setSearchParams({});
+  };
+
   const CombatantCard: React.FC<{ combatant: Combatant; isCurrentTurn: boolean }> = ({ combatant, isCurrentTurn }) => {
     const isDowned = combatant.currentHp === 0;
     
@@ -366,6 +436,75 @@ const CombatPage: React.FC = () => {
     );
   };
 
+  if (!combatStarted) {
+    return (
+      <div className="min-h-screen bg-gradient-wood p-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-cinzel font-bold text-parchment mb-2">Select Your Party</h1>
+            <p className="text-parchment/80">Choose 1-4 players to enter combat</p>
+          </div>
+
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Available Players ({selectedPlayerIds.length}/4 selected)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {availablePlayers.map((player) => (
+                  <div key={player.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50">
+                    <Checkbox
+                      checked={selectedPlayerIds.includes(player.id)}
+                      onCheckedChange={(checked) => 
+                        handlePlayerSelection(player.id, checked as boolean)
+                      }
+                      disabled={!selectedPlayerIds.includes(player.id) && selectedPlayerIds.length >= 4}
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-semibold">{player.name}</h3>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Shield className="h-3 w-3" />
+                          AC: {player.armorClass}
+                          <Heart className="h-3 w-3" />
+                          HP: {player.hitPoints}/{player.maxHitPoints}
+                        </div>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {Race[player.race]} {Class[player.class]}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {availablePlayers.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No players found. Create some characters first!</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="flex justify-center gap-4">
+            <Button 
+              onClick={startCombat}
+              disabled={selectedPlayerIds.length === 0}
+              size="lg"
+              className="px-8"
+            >
+              Start Combat
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-wood p-4">
       <div className="max-w-7xl mx-auto">
@@ -396,9 +535,14 @@ const CombatPage: React.FC = () => {
 
           {/* Middle - Combat Grid */}
           <div className="flex flex-col items-center">
-            <h2 className="text-xl font-cinzel font-semibold text-parchment mb-4">Arena (10x10 Grid)</h2>
+            <div className="flex items-center gap-4 mb-4">
+              <Button onClick={resetPartySelection} variant="outline" size="sm">
+                ← Back to Party Selection
+              </Button>
+              <h2 className="text-xl font-cinzel font-semibold text-parchment">Arena (20x20 Grid)</h2>
+            </div>
             <div className="bg-wood-light/30 p-4 rounded-lg border-2 border-copper">
-              <div className="grid grid-cols-10 gap-1 w-[640px] h-[640px]">
+              <div className="grid grid-cols-20 gap-1 w-[640px] h-[640px]">
                 {grid.map((cell, idx) => {
                   const combatant = combatants.find(c => c.position.x === cell.x && c.position.y === cell.y);
                   const isValidMove = currentCombatant.isMoving && 
