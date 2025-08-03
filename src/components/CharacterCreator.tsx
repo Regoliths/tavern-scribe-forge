@@ -93,7 +93,7 @@ export function CharacterCreator() {
       actions: []
     };
     try {
-        await axios.post("http://dndackendapiservice:8080/api/character", characterCreateDto);
+        await axios.post("http://dndackendapiservice.dungeonsanddragons.svc.cluster.local/api/character", characterCreateDto);
         alert("Character saved successfully!");
       } catch (error) {
         console.error("Error saving character:", error);
