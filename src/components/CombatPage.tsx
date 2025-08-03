@@ -33,7 +33,7 @@ interface GridPosition {
   occupied?: number; // combatant id
 }
 
-const getCombantantById = async (combatantId: number, positionX: number, positionY: number): Combatant | undefined => {
+const getCombantantById = async (combatantId: number, positionX: number, positionY: number): Promise<Combatant | undefined> => {
   try {
     var combatant = await getCharacter(combatantId.toString());
     return {
@@ -69,52 +69,6 @@ const getCombantantById = async (combatantId: number, positionX: number, positio
 const CombatPage: React.FC = () => {
   const { toast } = useToast();
   const [combatants, setCombatants] = useState<Combatant[]>([
-    getCombantantById(1, 2, 5),
-    getCombantantById(2, 1, 7),
-    /*{
-        id: 1,
-        name: 'Aragorn',
-        type: 'player',
-        ac: 18,
-        maxHp: 45,
-        currentHp: 45,
-        initiative: 20,
-        position: { x: 2, y: 5 },
-        movement: 30,
-        equipment: ['Sword', 'Shield', 'Leather Armor'],
-        actions: [
-            { name: 'Melee Attack', range: 5, attackBonus: 5, damage: '1d8+3' },
-            { name: 'Dodge', range: 0, attackBonus: 0, damage: '' },
-            { name: 'Dash', range: 0, attackBonus: 0, damage: '' }
-        ],
-        isMoving: false,
-        isTargeting: false,
-        selectedAction: null,
-        hasMovedThisTurn: false,
-        hasActedThisTurn: false
-    },
-    {
-      id: 2,
-      name: 'Legolas',
-      type: 'player',
-      ac: 16,
-      maxHp: 38,
-      currentHp: 38,
-      initiative: 18,
-      position: { x: 1, y: 7 },
-      movement: 30,
-      equipment: ['Elven Bow', 'Leather Armor', 'Quiver'],
-      actions: [
-        { name: 'Ranged Attack', range: 150, attackBonus: 6, damage: '1d8+4' },
-        { name: 'Hide', range: 0, attackBonus: 0, damage: '' },
-        { name: 'Dash', range: 0, attackBonus: 0, damage: '' }
-      ],
-      isMoving: false,
-      isTargeting: false,
-      selectedAction: null,
-      hasMovedThisTurn: false,
-      hasActedThisTurn: false
-    },*/
     // NPCs
     {
       id: 3,
@@ -158,6 +112,33 @@ const CombatPage: React.FC = () => {
       hasActedThisTurn: false
     }
   ]);
+
+  // Load player combatants asynchronously
+  useEffect(() => {
+    const loadPlayerCombatants = async () => {
+      try {
+        const player1 = await getCombantantById(1, 2, 5);
+        const player2 = await getCombantantById(2, 1, 7);
+        
+        setCombatants(prev => {
+          const newCombatants = [...prev];
+          if (player1) {
+            player1.initiative = 20; // Set initiative for player 1
+            newCombatants.push(player1);
+          }
+          if (player2) {
+            player2.initiative = 18; // Set initiative for player 2
+            newCombatants.push(player2);
+          }
+          return newCombatants;
+        });
+      } catch (error) {
+        console.error('Error loading player combatants:', error);
+      }
+    };
+
+    loadPlayerCombatants();
+  }, []);
 
   const [currentTurnIndex, setCurrentTurnIndex] = useState(0);
   const [selectedCombatant, setSelectedCombatant] = useState<string | null>(null);
