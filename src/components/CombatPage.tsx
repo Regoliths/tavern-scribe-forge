@@ -512,7 +512,7 @@ const CombatPage: React.FC = () => {
           <h1 className="text-3xl font-cinzel font-bold text-parchment mb-2">Combat Arena</h1>
           <div className="flex justify-center items-center gap-4">
             <Badge variant="default" className="text-lg px-4 py-2">
-              Turn: {currentCombatant.name} (Initiative: {currentCombatant.initiative})
+              Turn: {currentCombatant?.name} (Initiative: {currentCombatant?.initiative})
             </Badge>
             <Button onClick={nextTurn} variant="outline">
               Next Turn
@@ -545,11 +545,11 @@ const CombatPage: React.FC = () => {
               <div className="grid grid-cols-20 gap-1 w-[640px] h-[640px]">
                 {grid.map((cell, idx) => {
                   const combatant = combatants.find(c => c.position.x === cell.x && c.position.y === cell.y);
-                  const isValidMove = currentCombatant.isMoving && 
+                  const isValidMove = currentCombatant?.isMoving && 
                     Math.abs(currentCombatant.position.x - cell.x) + Math.abs(currentCombatant.position.y - cell.y) <= Math.floor(currentCombatant.movement / 5) &&
                     !cell.occupied;
-                  const isValidTarget = currentCombatant.isTargeting && combatant && combatant.id !== currentCombatant.id;
-                  const action = currentCombatant.actions.find(a => a.name === currentCombatant.selectedAction);
+                  const isValidTarget = currentCombatant?.isTargeting && combatant && combatant.id !== currentCombatant.id;
+                  const action = currentCombatant?.actions.find(a => a.name === currentCombatant.selectedAction);
                   const inRange = isValidTarget && action && calculateDistance(currentCombatant.position, { x: cell.x, y: cell.y }) * 5 <= action.range;
                   
                   return (
@@ -564,7 +564,7 @@ const CombatPage: React.FC = () => {
                         ${isValidMove ? 'bg-green-400/50 hover:bg-green-400/70' : ''}
                         ${isValidTarget && inRange ? 'bg-orange-400/50 hover:bg-orange-400/70 ring-2 ring-orange-400' : ''}
                         ${isValidTarget && !inRange ? 'bg-red-400/30' : ''}
-                        ${currentCombatant.isMoving && !isValidMove && !combatant ? 'bg-red-400/20' : ''}
+                        ${currentCombatant?.isMoving && !isValidMove && !combatant ? 'bg-red-400/20' : ''}
                       `}
                       onClick={() => {
                         if (isValidMove) {
