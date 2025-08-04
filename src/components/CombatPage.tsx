@@ -27,8 +27,7 @@ interface Combatant {
   isMoving: boolean;
   isTargeting: boolean;
   selectedAction: string | null;
-  hasActedThisTurn: boolean;
-  reactionUsed: boolean;
+  hasAttackedThisTurn: boolean;
 }
 
 interface GridPosition {
@@ -67,8 +66,7 @@ const getCombantantById = async (combatantId: number, positionX: number, positio
       isMoving: false,
       isTargeting: false,
       selectedAction: null,
-      hasActedThisTurn: false,
-      reactionUsed: false
+      hasAttackedThisTurn: false
     };
   } catch (error) {
     console.error("Error fetching combatant:", error);
@@ -106,8 +104,7 @@ const CombatPage: React.FC = () => {
       isMoving: false,
       isTargeting: false,
       selectedAction: null,
-      hasActedThisTurn: false,
-      reactionUsed: false
+      hasAttackedThisTurn: false
     },
     {
       id: 101,
@@ -128,8 +125,7 @@ const CombatPage: React.FC = () => {
       isMoving: false,
       isTargeting: false,
       selectedAction: null,
-      hasActedThisTurn: false,
-      reactionUsed: false
+      hasAttackedThisTurn: false
     }
   ];
 
@@ -232,12 +228,12 @@ const CombatPage: React.FC = () => {
 
   const handleAction = (combatantId: number, action: { name: string; range: number; attackBonus: number; damage: string }) => {
     const combatant = combatants.find(c => c.id === combatantId);
-    if (!combatant || combatant.hasActedThisTurn) return;
+    if (!combatant || combatant.hasAttackedThisTurn) return;
     
     if (action.range === 0) {
       // Non-attack actions (Dodge, Dash, Hide)
       setCombatants(prev => prev.map(c => 
-        c.id === combatantId ? { ...c, hasActedThisTurn: true } : c
+        c.id === combatantId ? { ...c, hasAttackedThisTurn: true } : c
       ));
       toast({
         title: "Action Taken",
@@ -302,7 +298,7 @@ const CombatPage: React.FC = () => {
       
       setCombatants(prev => prev.map(c => 
         c.id === targetId ? { ...c, currentHp: newHp } : 
-        c.id === attacker.id ? { ...c, isTargeting: false, selectedAction: null, hasActedThisTurn: true } : c
+        c.id === attacker.id ? { ...c, isTargeting: false, selectedAction: null, hasAttackedThisTurn: true } : c
       ));
       
       toast({
@@ -331,55 +327,6 @@ const CombatPage: React.FC = () => {
     }
   };
 
-  // Check for attacks of opportunity when moving
-  const checkAttackOfOpportunity = (movingCombatant: Combatant, newPosition: { x: number; y: number }) => {
-    const enemies = combatants.filter(c => 
-      c.type !== movingCombatant.type && 
-      c.currentHp > 0 && 
-      !c.reactionUsed
-    );
-    
-    for (const enemy of enemies) {
-      const oldDistance = calculateDistance(movingCombatant.position, enemy.position);
-      const newDistance = calculateDistance(newPosition, enemy.position);
-      
-      // If moving from adjacent (5ft) to non-adjacent, triggers AoO
-      if (oldDistance === 1 && newDistance > 1) {
-        const attackRoll = rollD20();
-        const meleeAction = enemy.actions.find(a => a.range <= 5) || enemy.actions[0];
-        const totalAttack = attackRoll + (meleeAction?.attackBonus || 0);
-        
-        if (totalAttack >= movingCombatant.ac) {
-          const damage = rollDamage(meleeAction?.damage || '1d4');
-          const newHp = Math.max(0, movingCombatant.currentHp - damage);
-          
-          setCombatants(prev => prev.map(c => 
-            c.id === movingCombatant.id ? { ...c, currentHp: newHp } : 
-            c.id === enemy.id ? { ...c, reactionUsed: true } : c
-          ));
-          
-          toast({
-            title: "Attack of Opportunity!",
-            description: `${enemy.name} hits ${movingCombatant.name} for ${damage} damage as they move away!`,
-            variant: "destructive",
-          });
-          
-          return true; // Stop after first AoO
-        } else {
-          setCombatants(prev => prev.map(c => 
-            c.id === enemy.id ? { ...c, reactionUsed: true } : c
-          ));
-          
-          toast({
-            title: "Attack of Opportunity Missed!",
-            description: `${enemy.name} misses ${movingCombatant.name} as they move away!`,
-          });
-        }
-      }
-    }
-    return false;
-  };
-
   const moveToPosition = (x: number, y: number) => {
     if (!currentCombatant.isMoving) return;
     
@@ -388,14 +335,9 @@ const CombatPage: React.FC = () => {
     const remainingMovement = currentCombatant.movement - currentCombatant.movementUsed;
     
     if (movementCost <= remainingMovement && !grid.find(g => g.x === x && g.y === y && g.occupied)) {
-      const newPosition = { x, y };
-      
-      // Check for attacks of opportunity before moving
-      checkAttackOfOpportunity(currentCombatant, newPosition);
-      
       setCombatants(prev => prev.map(c => 
         c.id === currentCombatant.id 
-          ? { ...c, position: newPosition, isMoving: false, movementUsed: c.movementUsed + movementCost }
+          ? { ...c, position: { x, y }, isMoving: false, movementUsed: c.movementUsed + movementCost }
           : c
       ));
     }
@@ -403,7 +345,7 @@ const CombatPage: React.FC = () => {
 
   const nextTurn = () => {
     setCurrentTurnIndex((prev) => (prev + 1) % initiativeOrder.length);
-    setCombatants(prev => prev.map(c => ({ ...c, isMoving: false, isTargeting: false, selectedAction: null, movementUsed: 0, hasActedThisTurn: false, reactionUsed: false })));
+    setCombatants(prev => prev.map(c => ({ ...c, isMoving: false, isTargeting: false, selectedAction: null, movementUsed: 0, hasAttackedThisTurn: false })));
   };
 
   const handlePlayerSelection = (playerId: number, isSelected: boolean) => {
@@ -494,10 +436,10 @@ const CombatPage: React.FC = () => {
                   variant={combatant.isTargeting && combatant.selectedAction === action.name ? "default" : "outline"}
                   onClick={() => handleAction(combatant.id, action)}
                   className="flex items-center gap-1"
-                  disabled={combatant.hasActedThisTurn}
+                  disabled={combatant.hasAttackedThisTurn}
                 >
                   {action.range > 0 ? <Target className="h-3 w-3" /> : <Sword className="h-3 w-3" />}
-                  {action.name} {combatant.hasActedThisTurn && '✓'}
+                  {action.name} {combatant.hasAttackedThisTurn && '✓'}
                 </Button>
               ))}
             </div>
