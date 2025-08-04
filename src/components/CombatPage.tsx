@@ -18,15 +18,16 @@ interface Combatant {
   maxHp: number;
   currentHp: number;
   initiative: number;
+  dexterityModifier: number;
   position: { x: number; y: number };
   movement: number;
+  movementUsed: number;
   equipment: string[];
   actions: { name: string; range: number; attackBonus: number; damage: string }[];
   isMoving: boolean;
   isTargeting: boolean;
   selectedAction: string | null;
-  hasMovedThisTurn: boolean;
-  hasActedThisTurn: boolean;
+  hasAttackedThisTurn: boolean;
 }
 
 interface GridPosition {
@@ -35,19 +36,25 @@ interface GridPosition {
   occupied?: number; // combatant id
 }
 
+const rollD20 = () => Math.floor(Math.random() * 20) + 1;
+const rollInitiative = (dexModifier: number) => rollD20() + dexModifier;
+
 const getCombantantById = async (combatantId: number, positionX: number, positionY: number): Promise<Combatant | undefined> => {
   try {
     var combatant = await getCharacter(combatantId.toString());
+    const dexModifier = Math.floor((combatant.dexterity || 10 - 10) / 2);
     return {
       id: combatant.id,
       name: combatant.name,
-      type: 'player', // Assuming all combatants are players for now
+      type: 'player',
       ac: combatant.armorClass,
       maxHp: combatant.maxHitPoints,
       currentHp: combatant.hitPoints,
-      initiative: 0, // Initiative can be set later
-      position: {x: positionX, y: positionY}, // Initial position can be set later
+      initiative: 0, // Will be rolled when combat starts
+      dexterityModifier: dexModifier,
+      position: {x: positionX, y: positionY},
       movement: 30, // Default movement speed
+      movementUsed: 0,
       equipment: combatant.equipment?.items.map((item: Item) => item.name) || [],
       actions: combatant.actions.map(action => ({
         name: action.name,
@@ -59,8 +66,7 @@ const getCombantantById = async (combatantId: number, positionX: number, positio
       isMoving: false,
       isTargeting: false,
       selectedAction: null,
-      hasMovedThisTurn: false,
-      hasActedThisTurn: false
+      hasAttackedThisTurn: false
     };
   } catch (error) {
     console.error("Error fetching combatant:", error);
@@ -85,9 +91,11 @@ const CombatPage: React.FC = () => {
       ac: 14,
       maxHp: 37,
       currentHp: 37,
-      initiative: 12,
+      initiative: 0, // Will be rolled
+      dexterityModifier: 2,
       position: { x: 5, y: 4 },
       movement: 50,
+      movementUsed: 0,
       equipment: ['Natural Weapons'],
       actions: [
         { name: 'Bite', range: 5, attackBonus: 5, damage: '2d6+3' },
@@ -96,8 +104,7 @@ const CombatPage: React.FC = () => {
       isMoving: false,
       isTargeting: false,
       selectedAction: null,
-      hasMovedThisTurn: false,
-      hasActedThisTurn: false
+      hasAttackedThisTurn: false
     },
     {
       id: 101,
@@ -106,9 +113,11 @@ const CombatPage: React.FC = () => {
       ac: 14,
       maxHp: 37,
       currentHp: 37,
-      initiative: 8,
+      initiative: 0, // Will be rolled
+      dexterityModifier: 2,
       position: { x: 6, y: 6 },
       movement: 50,
+      movementUsed: 0,
       equipment: ['Natural Weapons'],
       actions: [
         { name: 'Bite', range: 5, attackBonus: 4, damage: '2d6+2' }
@@ -116,8 +125,7 @@ const CombatPage: React.FC = () => {
       isMoving: false,
       isTargeting: false,
       selectedAction: null,
-      hasMovedThisTurn: false,
-      hasActedThisTurn: false
+      hasAttackedThisTurn: false
     }
   ];
 
@@ -166,12 +174,17 @@ const CombatPage: React.FC = () => {
         const playerId = playerIds[i];
         const playerCombatant = await getCombantantById(playerId, 2 + i, 1 + i);
         if (playerCombatant) {
-          playerCombatant.initiative = 20 - i; // Descending initiative
           playerCombatants.push(playerCombatant);
         }
       }
       
-      setCombatants([...npcs, ...playerCombatants]);
+      // Roll initiative for all combatants
+      const allCombatants = [...npcs, ...playerCombatants];
+      allCombatants.forEach(combatant => {
+        combatant.initiative = rollInitiative(combatant.dexterityModifier);
+      });
+      
+      setCombatants(allCombatants);
     } catch (error) {
       console.error('Error loading combat:', error);
     }
@@ -206,7 +219,7 @@ const CombatPage: React.FC = () => {
 
   const handleMovement = (combatantId: number) => {
     const combatant = combatants.find(c => c.id === combatantId);
-    if (!combatant || combatant.hasMovedThisTurn) return;
+    if (!combatant || combatant.movementUsed >= combatant.movement) return;
     
     setCombatants(prev => prev.map(c => 
       c.id === combatantId ? { ...c, isMoving: !c.isMoving, isTargeting: false, selectedAction: null } : { ...c, isMoving: false, isTargeting: false, selectedAction: null }
@@ -215,12 +228,12 @@ const CombatPage: React.FC = () => {
 
   const handleAction = (combatantId: number, action: { name: string; range: number; attackBonus: number; damage: string }) => {
     const combatant = combatants.find(c => c.id === combatantId);
-    if (!combatant || combatant.hasActedThisTurn) return;
+    if (!combatant || combatant.hasAttackedThisTurn) return;
     
     if (action.range === 0) {
       // Non-attack actions (Dodge, Dash, Hide)
       setCombatants(prev => prev.map(c => 
-        c.id === combatantId ? { ...c, hasActedThisTurn: true } : c
+        c.id === combatantId ? { ...c, hasAttackedThisTurn: true } : c
       ));
       toast({
         title: "Action Taken",
@@ -285,7 +298,7 @@ const CombatPage: React.FC = () => {
       
       setCombatants(prev => prev.map(c => 
         c.id === targetId ? { ...c, currentHp: newHp } : 
-        c.id === attacker.id ? { ...c, isTargeting: false, selectedAction: null, hasActedThisTurn: true } : c
+        c.id === attacker.id ? { ...c, isTargeting: false, selectedAction: null, hasAttackedThisTurn: true } : c
       ));
       
       toast({
@@ -318,12 +331,13 @@ const CombatPage: React.FC = () => {
     if (!currentCombatant.isMoving) return;
     
     const distance = Math.abs(currentCombatant.position.x - x) + Math.abs(currentCombatant.position.y - y);
-    const maxTiles = Math.floor(currentCombatant.movement / 5);
+    const movementCost = distance * 5; // Each square is 5 feet
+    const remainingMovement = currentCombatant.movement - currentCombatant.movementUsed;
     
-    if (distance <= maxTiles && !grid.find(g => g.x === x && g.y === y && g.occupied)) {
+    if (movementCost <= remainingMovement && !grid.find(g => g.x === x && g.y === y && g.occupied)) {
       setCombatants(prev => prev.map(c => 
         c.id === currentCombatant.id 
-          ? { ...c, position: { x, y }, isMoving: false, hasMovedThisTurn: true }
+          ? { ...c, position: { x, y }, isMoving: false, movementUsed: c.movementUsed + movementCost }
           : c
       ));
     }
@@ -331,7 +345,7 @@ const CombatPage: React.FC = () => {
 
   const nextTurn = () => {
     setCurrentTurnIndex((prev) => (prev + 1) % initiativeOrder.length);
-    setCombatants(prev => prev.map(c => ({ ...c, isMoving: false, isTargeting: false, selectedAction: null, hasMovedThisTurn: false, hasActedThisTurn: false })));
+    setCombatants(prev => prev.map(c => ({ ...c, isMoving: false, isTargeting: false, selectedAction: null, movementUsed: 0, hasAttackedThisTurn: false })));
   };
 
   const handlePlayerSelection = (playerId: number, isSelected: boolean) => {
@@ -410,10 +424,10 @@ const CombatPage: React.FC = () => {
                 variant={combatant.isMoving ? "default" : "outline"}
                 onClick={() => handleMovement(combatant.id)}
                 className="flex items-center gap-1"
-                disabled={combatant.hasMovedThisTurn}
+                disabled={combatant.movementUsed >= combatant.movement}
               >
                 <Move className="h-3 w-3" />
-                Move ({Math.floor(combatant.movement / 5)} tiles) {combatant.hasMovedThisTurn && '✓'}
+                Move ({Math.floor((combatant.movement - combatant.movementUsed) / 5)} left)
               </Button>
               {combatant.actions.map((action, idx) => (
                 <Button 
@@ -422,10 +436,10 @@ const CombatPage: React.FC = () => {
                   variant={combatant.isTargeting && combatant.selectedAction === action.name ? "default" : "outline"}
                   onClick={() => handleAction(combatant.id, action)}
                   className="flex items-center gap-1"
-                  disabled={combatant.hasActedThisTurn}
+                  disabled={combatant.hasAttackedThisTurn}
                 >
                   {action.range > 0 ? <Target className="h-3 w-3" /> : <Sword className="h-3 w-3" />}
-                  {action.name} {combatant.hasActedThisTurn && '✓'}
+                  {action.name} {combatant.hasAttackedThisTurn && '✓'}
                 </Button>
               ))}
             </div>
@@ -545,8 +559,11 @@ const CombatPage: React.FC = () => {
               <div className="grid grid-cols-10 gap-1 w-[640px] h-[640px]">
                 {grid.map((cell, idx) => {
                   const combatant = combatants.find(c => c.position.x === cell.x && c.position.y === cell.y);
+                  const movementDistance = Math.abs(currentCombatant?.position.x || 0 - cell.x) + Math.abs(currentCombatant?.position.y || 0 - cell.y);
+                  const movementCost = movementDistance * 5;
+                  const remainingMovement = (currentCombatant?.movement || 0) - (currentCombatant?.movementUsed || 0);
                   const isValidMove = currentCombatant?.isMoving && 
-                    Math.abs(currentCombatant.position.x - cell.x) + Math.abs(currentCombatant.position.y - cell.y) <= Math.floor(currentCombatant.movement / 5) &&
+                    movementCost <= remainingMovement &&
                     !cell.occupied;
                   const isValidTarget = currentCombatant?.isTargeting && combatant && combatant.id !== currentCombatant.id;
                   const action = currentCombatant?.actions.find(a => a.name === currentCombatant.selectedAction);
