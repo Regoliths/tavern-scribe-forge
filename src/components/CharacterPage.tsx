@@ -22,6 +22,21 @@ const getModifier = (score: number): string => {
  * @param id The ID of the character to fetch.
  * @returns A Promise that resolves to the Character object.
  */
+
+export const getAllCharacters = async (): Promise<Character[]> => {
+  try {
+    // Use the generic <Character[]> to type the expected response data
+    const response = await axios.get<Character[]>(`/api/character`);
+
+    // response.data is now strongly typed as Character[]
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching characters:", error);
+    // Re-throw the error so the calling component can handle it
+    throw error;
+  }
+}
+
 export const getCharacter = async (id: string): Promise<Character> => {
   try {
     // Use the generic <Character> to type the expected response data

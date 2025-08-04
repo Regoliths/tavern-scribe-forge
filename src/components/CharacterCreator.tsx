@@ -93,8 +93,10 @@ export function CharacterCreator() {
       actions: []
     };
     try {
-        await axios.post("/api/character", characterCreateDto);
+        var createdCharacter = await axios.post("/api/character", characterCreateDto);
         alert("Character saved successfully!");
+        //route to chracterPage with character id
+        window.location.href = `/character/${createdCharacter.data?.id}`;
       } catch (error) {
         console.error("Error saving character:", error);
         alert("Failed to save character.");

@@ -137,17 +137,7 @@ const CombatPage: React.FC = () => {
   useEffect(() => {
     const loadAvailablePlayers = async () => {
       try {
-        const players: Character[] = [];
-        for (let i = 1; i <= 10; i++) {
-          try {
-            const player = await getCharacter(i.toString());
-            if (player) {
-              players.push(player);
-            }
-          } catch (error) {
-            // Player doesn't exist, continue
-          }
-        }
+        const players: Character[] = await getAllCharacters();
         setAvailablePlayers(players);
       } catch (error) {
         console.error('Error loading available players:', error);
