@@ -34,11 +34,16 @@ export class Action {
     description: string;
     type: string; // e.g., "attack", "spell", "ability"
     range?: string; // Optional, for spells or ranged attacks
-    diceCount?: number; // Optional, for attacks or spells
-    diceSize?: number; // Optional, for attacks or spells
-    damageType?: string; // Optional, for attacks or spells
+    Damage?: Damage; // Optional, for attacks or spells
     attackBonus?: number; // Optional, for attacks
 }
+
+export class Damage {
+    damageType: string;
+    diceCount: number;
+    diceSize: number;
+}
+
 export enum Race {
     Human,
     Elf,

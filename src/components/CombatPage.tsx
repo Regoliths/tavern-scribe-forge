@@ -54,7 +54,7 @@ const getCombantantById = async (combatantId: number, positionX: number, positio
         description: action.description,
         range: action.range ? parseInt(action.range) : 0,
         attackBonus: action.attackBonus || 0,
-        damage: `${action.diceCount}d${action.diceSize}${action.damageType ? ` ${action.damageType}` : ''}`
+        damage: `${action.Damage.diceCount}d${action.Damage.diceSize}${action.Damage.damageType ? ` ${action.Damage.damageType}` : ''}`
       })),
       isMoving: false,
       isTargeting: false,
