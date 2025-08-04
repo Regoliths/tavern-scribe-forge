@@ -54,7 +54,7 @@ const getCombantantById = async (combatantId: number, positionX: number, positio
       initiative: 0, // Will be rolled when combat starts
       dexterityModifier: dexModifier,
       position: {x: positionX, y: positionY},
-      movement: 30, // Default movement speed
+      movement: combatant.speed, // Default movement speed
       movementUsed: 0,
       equipment: combatant.equipment?.items.map((item: Item) => item.name) || [],
       actions: combatant.actions.map(action => ({
@@ -302,7 +302,7 @@ const CombatPage: React.FC = () => {
       
       setCombatants(prev => prev.map(c => 
         c.id === targetId ? { ...c, currentHp: newHp } : 
-        c.id === attacker.id ? { ...c, isTargeting: false, selectedAction: null, hasActedThisTurn: true } : c
+        c.id === attacker.id ? { ...c, isTargeting: false, selectedAction: null, hasActedThisTurn: true, isMoving: false } : c
       ));
       
       toast({
@@ -320,7 +320,7 @@ const CombatPage: React.FC = () => {
     } else {
       // Miss
       setCombatants(prev => prev.map(c => 
-        c.id === attacker.id ? { ...c, isTargeting: false, selectedAction: null } : c
+        c.id === attacker.id ? { ...c, isTargeting: false, selectedAction: null, hasActedThisTurn: true, isMoving: false } : c
       ));
       
       toast({
@@ -381,7 +381,7 @@ const CombatPage: React.FC = () => {
   };
 
   const moveToPosition = (x: number, y: number) => {
-    if (!currentCombatant.isMoving) return;
+    currentCombatant.isMoving = true;
     
     const distance = Math.abs(currentCombatant.position.x - x) + Math.abs(currentCombatant.position.y - y);
     const movementCost = distance * 5; // Each square is 5 feet
@@ -617,16 +617,11 @@ const CombatPage: React.FC = () => {
               <div className="grid grid-cols-10 gap-1 w-[640px] h-[640px]">
                 {grid.map((cell, idx) => {
                   const combatant = combatants.find(c => c.position.x === cell.x && c.position.y === cell.y);
-                  const movementDistance = Math.abs(currentCombatant?.position.x || 0 - cell.x) + Math.abs(currentCombatant?.position.y || 0 - cell.y);
-                  const movementCost = movementDistance * 5;
-                  const remainingMovement = (currentCombatant?.movement || 0) - (currentCombatant?.movementUsed || 0);
-                  const isValidMove = currentCombatant?.isMoving && 
-                    movementCost <= remainingMovement &&
-                    !cell.occupied;
+                  const isValidMove = currentCombatant?.isMoving &&
+                      Math.abs(currentCombatant.position.x - cell.x) + Math.abs(currentCombatant.position.y - cell.y) <= Math.floor((currentCombatant.movement - currentCombatant.movementUsed) / 5) && !cell.occupied;
                   const isValidTarget = currentCombatant?.isTargeting && combatant && combatant.id !== currentCombatant.id;
                   const action = currentCombatant?.actions.find(a => a.name === currentCombatant.selectedAction);
                   const inRange = isValidTarget && action && calculateDistance(currentCombatant.position, { x: cell.x, y: cell.y }) * 5 <= action.range;
-                  
                   return (
                     <div
                       key={idx}
