@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { Plus, Minus, Save, Trash2, Edit } from 'lucide-react';
 import tavernBackground from "@/assets/tavern-background.jpg";
 import axios from "axios";
 import { Character, Race, Alignment, Class, Background } from '@/models/Character';
@@ -50,16 +55,145 @@ export const getCharacter = async (id: string): Promise<Character> => {
     throw error;
   }
 };
+
+// Standard D&D 5e Equipment
+const DND_EQUIPMENT: Item[] = [
+  { id: 1001, name: "Longsword", type: "Weapon", weight: 3, quantity: 1, cost: 15, description: "A versatile one-handed sword. Damage: 1d8 slashing." },
+  { id: 1002, name: "Shield", type: "Armor", weight: 6, quantity: 1, cost: 10, description: "+2 to AC when equipped." },
+  { id: 1003, name: "Chain Mail", type: "Armor", weight: 55, quantity: 1, cost: 75, description: "Heavy armor. AC: 16." },
+  { id: 1004, name: "Leather Armor", type: "Armor", weight: 10, quantity: 1, cost: 10, description: "Light armor. AC: 11 + Dex modifier." },
+  { id: 1005, name: "Shortbow", type: "Weapon", weight: 2, quantity: 1, cost: 25, description: "Ranged weapon. Damage: 1d6 piercing. Range: 80/320." },
+  { id: 1006, name: "Arrows (20)", type: "Ammunition", weight: 1, quantity: 1, cost: 1, description: "A quiver of 20 arrows." },
+  { id: 1007, name: "Dagger", type: "Weapon", weight: 1, quantity: 1, cost: 2, description: "Light, finesse weapon. Damage: 1d4 piercing." },
+  { id: 1008, name: "Handaxe", type: "Weapon", weight: 2, quantity: 1, cost: 5, description: "Light, thrown weapon. Damage: 1d6 slashing." },
+  { id: 1009, name: "Backpack", type: "Gear", weight: 5, quantity: 1, cost: 2, description: "Can hold up to 30 lbs of gear." },
+  { id: 1010, name: "Bedroll", type: "Gear", weight: 7, quantity: 1, cost: 1, description: "A soft blanket for sleeping outdoors." },
+  { id: 1011, name: "Hemp Rope (50 feet)", type: "Gear", weight: 10, quantity: 1, cost: 2, description: "Strong rope for climbing or binding." },
+  { id: 1012, name: "Torch", type: "Gear", weight: 1, quantity: 1, cost: 0.01, description: "Provides bright light for 1 hour." },
+  { id: 1013, name: "Rations (1 day)", type: "Gear", weight: 2, quantity: 1, cost: 2, description: "Dried foods good for one day." },
+  { id: 1014, name: "Waterskin", type: "Gear", weight: 5, quantity: 1, cost: 2, description: "Holds 4 pints of liquid." },
+  { id: 1015, name: "Thieves' Tools", type: "Gear", weight: 1, quantity: 1, cost: 25, description: "Tools for picking locks and disarming traps." },
+  { id: 1016, name: "Spell Component Pouch", type: "Gear", weight: 2, quantity: 1, cost: 25, description: "Contains material components for spells." },
+  { id: 1017, name: "Health Potion", type: "Consumable", weight: 0.5, quantity: 1, cost: 50, description: "Restores 2d4+2 hit points when consumed." }
+];
+
 export const CharacterPage = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   const [character, setCharacter] = useState<Character | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<string>("");
+  const [itemQuantity, setItemQuantity] = useState<number>(1);
 
   // State to handle the loading process. We start in a loading state.
   const [loading, setLoading] = useState<boolean>(true);
 
   // State to hold any potential network errors.
   const [error, setError] = useState<string | null>(null);
+
+  // API Functions
+  const updateCharacter = async (updatedCharacter: Character): Promise<void> => {
+    try {
+      await axios.put(`/api/character/${id}`, updatedCharacter);
+      toast({
+        title: "Character Updated",
+        description: "Your character has been successfully updated.",
+      });
+    } catch (error) {
+      console.error("Error updating character:", error);
+      toast({
+        title: "Update Failed",
+        description: "Failed to update character. Please try again.",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  const deleteCharacter = async (): Promise<void> => {
+    try {
+      await axios.delete(`/api/character/${id}`);
+      toast({
+        title: "Character Deleted",
+        description: "Your character has been successfully deleted.",
+      });
+      navigate('/');
+    } catch (error) {
+      console.error("Error deleting character:", error);
+      toast({
+        title: "Delete Failed",
+        description: "Failed to delete character. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Inventory Management Functions
+  const addItemToInventory = async (itemId: string, toEquipment = false) => {
+    if (!character) return;
+    
+    const selectedEquipment = DND_EQUIPMENT.find(item => item.id.toString() === itemId);
+    if (!selectedEquipment) return;
+
+    const newItem: Item = {
+      ...selectedEquipment,
+      id: Date.now(), // Generate unique ID
+      quantity: itemQuantity
+    };
+
+    const updatedCharacter = { ...character };
+    
+    if (toEquipment) {
+      if (!updatedCharacter.equipment) {
+        updatedCharacter.equipment = { 
+          id: Date.now(), 
+          characterId: character.id, 
+          items: [], 
+          totalWeight: 0 
+        };
+      }
+      updatedCharacter.equipment.items.push(newItem);
+      updatedCharacter.equipment.totalWeight = calculateTotalWeight(updatedCharacter.equipment.items);
+    } else {
+      if (!updatedCharacter.inventory) {
+        updatedCharacter.inventory = { 
+          id: Date.now(), 
+          characterId: character.id, 
+          items: [], 
+          totalWeight: 0 
+        };
+      }
+      updatedCharacter.inventory.items.push(newItem);
+      updatedCharacter.inventory.totalWeight = calculateTotalWeight(updatedCharacter.inventory.items);
+    }
+
+    setCharacter(updatedCharacter);
+    await updateCharacter(updatedCharacter);
+    setSelectedItem("");
+    setItemQuantity(1);
+  };
+
+  const removeItemFromInventory = async (itemId: number, fromEquipment = false) => {
+    if (!character) return;
+
+    const updatedCharacter = { ...character };
+    
+    if (fromEquipment && updatedCharacter.equipment) {
+      updatedCharacter.equipment.items = updatedCharacter.equipment.items.filter(item => item.id !== itemId);
+    } else if (updatedCharacter.inventory) {
+      updatedCharacter.inventory.items = updatedCharacter.inventory.items.filter(item => item.id !== itemId);
+    }
+
+    setCharacter(updatedCharacter);
+    await updateCharacter(updatedCharacter);
+  };
+
+  const saveCharacter = async () => {
+    if (!character) return;
+    await updateCharacter(character);
+  };
 
   // 3. The useEffect Hook to Fetch Data on Load
   useEffect(() => {
@@ -124,23 +258,74 @@ export const CharacterPage = () => {
   const backpackWeight = calculateTotalWeight(character?.inventory?.items ?? []);
   const totalWeight = equippedWeight + backpackWeight;
 
-  // Component for rendering inventory items
-  const InventoryItemComponent = ({ item }: { item: Item }) => (
+  // Component for rendering inventory items with edit controls
+  const EditableInventoryItemComponent = ({ item, fromEquipment = false }: { item: Item; fromEquipment?: boolean }) => (
     <div className="bg-parchment/10 border border-copper rounded p-3 mb-2">
       <div className="flex justify-between items-start mb-2">
         <div className="flex-1">
           <div className="text-parchment font-medium">{item.name}</div>
           <Badge variant="outline" className="text-xs mt-1">{item.type}</Badge>
         </div>
-        <div className="text-right text-sm">
-          <div className="text-copper">Qty: {item.quantity}</div>
-          <div className="text-copper">{item.weight * item.quantity} lbs</div>
+        <div className="flex items-center gap-2">
+          <div className="text-right text-sm">
+            <div className="text-copper">Qty: {item.quantity}</div>
+            <div className="text-copper">{item.weight * item.quantity} lbs</div>
+          </div>
+          {isEditing && (
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => removeItemFromInventory(item.id, fromEquipment)}
+              className="ml-2"
+            >
+              <Minus className="h-3 w-3" />
+            </Button>
+          )}
         </div>
       </div>
       {item.description && (
         <p className="text-parchment/80 text-sm mb-2">{item.description}</p>
       )}
       <div className="text-copper text-sm">Cost: {item.cost} gp</div>
+    </div>
+  );
+
+  // Component for adding new items
+  const AddItemComponent = ({ toEquipment = false }: { toEquipment?: boolean }) => (
+    <div className="bg-parchment/5 border border-copper border-dashed rounded p-3 mb-2">
+      <div className="space-y-3">
+        <Select value={selectedItem} onValueChange={setSelectedItem}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select an item to add" />
+          </SelectTrigger>
+          <SelectContent>
+            {DND_EQUIPMENT.map((item) => (
+              <SelectItem key={item.id} value={item.id.toString()}>
+                {item.name} ({item.type}) - {item.cost} gp
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        
+        <div className="flex items-center gap-2">
+          <Input
+            type="number"
+            value={itemQuantity}
+            onChange={(e) => setItemQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+            min="1"
+            className="w-20"
+            placeholder="Qty"
+          />
+          <Button
+            onClick={() => addItemToInventory(selectedItem, toEquipment)}
+            disabled={!selectedItem}
+            className="flex items-center gap-1"
+          >
+            <Plus className="h-3 w-3" />
+            Add {toEquipment ? 'to Equipment' : 'to Backpack'}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 
@@ -245,16 +430,28 @@ export const CharacterPage = () => {
               <CardHeader>
                 <CardTitle className="text-2xl font-cinzel text-parchment flex justify-between items-center">
                   Equipped Items
-                  <Badge variant="secondary" className="text-sm">
-                    {equippedWeight} lbs
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-sm">
+                      {equippedWeight} lbs
+                    </Badge>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setIsEditing(!isEditing)}
+                      className="flex items-center gap-1"
+                    >
+                      <Edit className="h-3 w-3" />
+                      {isEditing ? 'Done' : 'Edit'}
+                    </Button>
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent>
+                {isEditing && <AddItemComponent toEquipment={true} />}
                 {character.equipment && character.equipment.items.length > 0 ? (
                   <div className="space-y-2">
                     {character.equipment.items.map((item) => (
-                      <InventoryItemComponent key={item.id} item={item} />
+                      <EditableInventoryItemComponent key={item.id} item={item} fromEquipment={true} />
                     ))}
                   </div>
                 ) : (
@@ -269,16 +466,28 @@ export const CharacterPage = () => {
               <CardHeader>
                 <CardTitle className="text-2xl font-cinzel text-parchment flex justify-between items-center">
                   Backpack
-                  <Badge variant="secondary" className="text-sm">
-                    {backpackWeight} lbs
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-sm">
+                      {backpackWeight} lbs
+                    </Badge>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setIsEditing(!isEditing)}
+                      className="flex items-center gap-1"
+                    >
+                      <Edit className="h-3 w-3" />
+                      {isEditing ? 'Done' : 'Edit'}
+                    </Button>
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent>
+                {isEditing && <AddItemComponent toEquipment={false} />}
                 {character.inventory && character.inventory.items.length > 0 ? (
                   <div className="space-y-2">
                     {character.inventory.items.map((item) => (
-                      <InventoryItemComponent key={item.id} item={item} />
+                      <EditableInventoryItemComponent key={item.id} item={item} fromEquipment={false} />
                     ))}
                   </div>
                 ) : (
@@ -318,7 +527,7 @@ export const CharacterPage = () => {
             </Card>
           </div>
           
-          <div className="mt-8 text-center">
+          <div className="mt-8 flex justify-center gap-4">
             <Button 
               variant="outline" 
               className="bg-gradient-gold text-background hover:shadow-glow-gold"
@@ -326,6 +535,38 @@ export const CharacterPage = () => {
             >
               Back to Character Creator
             </Button>
+            
+            <Button 
+              onClick={saveCharacter}
+              className="flex items-center gap-2"
+              variant="default"
+            >
+              <Save className="h-4 w-4" />
+              Save Character
+            </Button>
+            
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" className="flex items-center gap-2">
+                  <Trash2 className="h-4 w-4" />
+                  Delete Character
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete {character.name} and all associated data.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={deleteCharacter} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Delete Character
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       </div>
