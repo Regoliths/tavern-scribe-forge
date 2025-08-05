@@ -406,6 +406,22 @@ const CombatPage: React.FC = () => {
     setCombatants(prev => prev.map(c => ({ ...c, isMoving: false, isTargeting: false, selectedAction: null, movementUsed: 0, hasActedThisTurn: false, reactionUsed: false })));
   };
 
+  // Check if combat should end
+  const checkCombatEnd = () => {
+    const alivePlayers = combatants.filter(c => c.type === 'player' && c.currentHp > 0);
+    const aliveMonsters = combatants.filter(c => c.type === 'npc' && c.currentHp > 0);
+    
+    if (alivePlayers.length === 0) {
+      return { ended: true, result: 'defeat' };
+    }
+    if (aliveMonsters.length === 0) {
+      return { ended: true, result: 'victory' };
+    }
+    return { ended: false, result: null };
+  };
+
+  const combatStatus = checkCombatEnd();
+
   const handlePlayerSelection = (playerId: number, isSelected: boolean) => {
     if (isSelected) {
       if (selectedPlayerIds.length < 4) {
@@ -583,14 +599,45 @@ const CombatPage: React.FC = () => {
         <div className="mb-4 text-center">
           <h1 className="text-3xl font-cinzel font-bold text-parchment mb-2">Combat Arena</h1>
           <div className="flex justify-center items-center gap-4">
-            <Badge variant="default" className="text-lg px-4 py-2">
-              Turn: {currentCombatant?.name} (Initiative: {currentCombatant?.initiative})
-            </Badge>
-            <Button onClick={nextTurn} variant="outline">
-              Next Turn
-            </Button>
+            {!combatStatus.ended && (
+              <>
+                <Badge variant="default" className="text-lg px-4 py-2">
+                  Turn: {currentCombatant?.name} (Initiative: {currentCombatant?.initiative})
+                </Badge>
+                <Button onClick={nextTurn} variant="outline">
+                  Next Turn
+                </Button>
+              </>
+            )}
           </div>
         </div>
+
+        {/* Combat End Overlay */}
+        {combatStatus.ended && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+            <Card className="max-w-md w-full mx-4">
+              <CardHeader className="text-center">
+                <CardTitle className={`text-3xl font-cinzel font-bold ${combatStatus.result === 'victory' ? 'text-green-600' : 'text-red-600'}`}>
+                  {combatStatus.result === 'victory' ? 'Victory!' : 'Defeat!'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-center space-y-4">
+                <p className="text-lg">
+                  {combatStatus.result === 'victory' 
+                    ? 'All enemies have been defeated!' 
+                    : 'All party members have fallen!'}
+                </p>
+                <Button 
+                  onClick={resetPartySelection} 
+                  size="lg" 
+                  className="w-full"
+                >
+                  Return to Party Selection
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         <div className="flex justify-center items-start gap-6">
           {/* Left Side - Player Cards */}
