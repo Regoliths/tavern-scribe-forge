@@ -12,6 +12,7 @@ import tavernBackground from "@/assets/tavern-background.jpg";
 import axios from "axios";
 import { Character, Race, Alignment, Class, Background } from '@/models/Character';
 import {Item} from "@/models/Item.ts";
+import { UpdateCharacterDto } from '@/models/UpdateCharacterDto';
 
 interface CharacterPageProps {
   characterId: string;
@@ -96,7 +97,65 @@ export const CharacterPage = () => {
   // API Functions
   const updateCharacter = async (updatedCharacter: Character): Promise<void> => {
     try {
-      await axios.put(`/api/character/${id}`, updatedCharacter);
+      // Convert Character to UpdateCharacterDto format
+      const updateDto: UpdateCharacterDto = {
+        name: updatedCharacter.name,
+        race: updatedCharacter.race,
+        class: updatedCharacter.class,
+        background: updatedCharacter.background,
+        alignment: updatedCharacter.alignment,
+        level: updatedCharacter.level,
+        strength: updatedCharacter.strength,
+        dexterity: updatedCharacter.dexterity,
+        constitution: updatedCharacter.constitution,
+        intelligence: updatedCharacter.intelligence,
+        wisdom: updatedCharacter.wisdom,
+        charisma: updatedCharacter.charisma,
+        hitPoints: updatedCharacter.hitPoints,
+        maxHitPoints: updatedCharacter.maxHitPoints,
+        hitDice: 0, // Default value as schema expects number
+        armorClass: updatedCharacter.armorClass,
+        speed: updatedCharacter.speed,
+        notes: updatedCharacter.notes,
+        equipment: {
+          characterId: updatedCharacter.id,
+          totalWeight: updatedCharacter.equipment?.totalWeight || 0,
+          items: updatedCharacter.equipment?.items.map(item => ({
+            id: item.id,
+            name: item.name,
+            description: item.description,
+            type: item.type,
+            quantity: item.quantity,
+            weight: item.weight,
+            cost: item.cost
+          })) || []
+        },
+        inventory: {
+          characterId: updatedCharacter.id,
+          totalWeight: updatedCharacter.inventory?.totalWeight || 0,
+          items: updatedCharacter.inventory?.items.map(item => ({
+            id: item.id,
+            name: item.name,
+            description: item.description,
+            type: item.type,
+            quantity: item.quantity,
+            weight: item.weight,
+            cost: item.cost
+          })) || []
+        },
+        actions: updatedCharacter.actions?.map(action => ({
+          id: action.id,
+          name: action.name,
+          description: action.description,
+          range: 0, // Default value as schema expects number
+          attackBonus: action.attackBonus || 0,
+          damageType: action.damage?.damageType || "",
+          diceCount: action.damage?.diceCount || 0,
+          diceSize: action.damage?.diceSides || 0
+        })) || []
+      };
+
+      await axios.put(`/api/character/${id}`, updateDto);
       toast({
         title: "Character Updated",
         description: "Your character has been successfully updated.",
