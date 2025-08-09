@@ -45,19 +45,15 @@ export class Damage {
 }
 
 export enum Race {
-    Human,
-    Elf,
-    Dwarf,
-    Halfling,
-    Dragonborn,
-    Gnome,
-    HalfElf,
-    HalfOrc,
-    Tiefling,
-    Aasimar,
-    Firbolg,
-    Genasi,
-    Goliath,
+    dragonborn,
+    dwarf,
+    elf,
+    gnome,
+    halfElf,
+    halfOrc,
+    halfling,
+    human,
+    tiefling,
 }
 
 export enum Alignment

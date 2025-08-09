@@ -85,7 +85,9 @@ export const GET_CLASSES = gql`
           option_set_type
           options {
             item {
-              name
+              ... on Proficiency {
+                  name
+              }
             }
           }
         }
