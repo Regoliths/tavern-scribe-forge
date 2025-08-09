@@ -46,3 +46,80 @@ export const GET_EQUIPMENT_BY_CATEGORY = gql`
     }
   }
 `;
+
+// GraphQL query to fetch all races
+export const GET_RACES = gql`
+  query GetRaces {
+    races {
+      index
+      name
+      ability_bonuses {
+        ability_score {
+          name
+        }
+        bonus
+      }
+      size
+      speed
+      languages {
+        name
+      }
+      traits {
+        name
+        desc
+      }
+    }
+  }
+`;
+
+// GraphQL query to fetch all classes
+export const GET_CLASSES = gql`
+  query GetClasses {
+    classes {
+      index
+      name
+      hit_die
+      proficiency_choices {
+        choose
+        from {
+          option_set_type
+          options {
+            item {
+              name
+            }
+          }
+        }
+      }
+      proficiencies {
+        name
+      }
+      saving_throws {
+        name
+      }
+      spellcasting {
+        level
+        spellcasting_ability {
+          name
+        }
+      }
+    }
+  }
+`;
+
+// GraphQL query to fetch all ability scores
+export const GET_ABILITY_SCORES = gql`
+  query GetAbilityScores {
+    abilityScores {
+      index
+      name
+      full_name
+      desc
+      skills {
+        name
+      }
+    }
+  }
+`;
+
+// Note: The D&D 5e API doesn't have backgrounds or alignments endpoints,
+// so we'll keep those as constants for now
