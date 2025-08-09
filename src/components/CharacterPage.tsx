@@ -198,7 +198,6 @@ export const CharacterPage = () => {
 
     const newItem: Item = {
       ...selectedEquipment,
-      id: Date.now(), // Generate unique ID
       quantity: itemQuantity
     };
 
@@ -207,7 +206,6 @@ export const CharacterPage = () => {
     if (toEquipment) {
       if (!updatedCharacter.equipment) {
         updatedCharacter.equipment = { 
-          id: Date.now(), 
           characterId: character.id, 
           items: [], 
           totalWeight: 0 

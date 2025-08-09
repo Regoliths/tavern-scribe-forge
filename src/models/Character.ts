@@ -23,7 +23,7 @@ export class Character {
     hitDice?: string;
     passivePerception?: number;
     proficiencyBonus?: number;
-    equipment?: Equipment;
+    equipment?: { characterId: number; items: any[]; totalWeight: number };
     inventory?: Inventory;
     actions?: Action[];
 }
