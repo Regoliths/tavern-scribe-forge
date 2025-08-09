@@ -88,8 +88,16 @@ export function CharacterCreator() {
       armorClass: character.armorClass,
       speed: character.speed,
       notes: character.notes,
-      equipment: { characterId: 0, items: [], totalWeight: 0 },
-      inventory: { characterId: 0, items: [], totalWeight: 0 },
+      equipment: { 
+        characterId: 0, 
+        items: [], 
+        totalWeight: 0 
+      },
+      inventory: { 
+        characterId: 0, 
+        items: [], 
+        totalWeight: 0 
+      },
       actions: []
     };
     try {
