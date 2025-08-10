@@ -15,34 +15,10 @@ import {Item} from "@/models/Item.ts";
 import { UpdateCharacterDto } from '@/models/UpdateCharacterDto';
 import { useEquipment } from '@/hooks/useEquipment';
 
-interface CharacterPageProps {
-  characterId: string;
-}
-
 const getModifier = (score: number): string => {
   const modifier = Math.floor((score - 10) / 2);
   return modifier >= 0 ? `+${modifier}` : `${modifier}`;
 };
-
-/**
- * Fetches a single character by its ID from the API.
- * @param id The ID of the character to fetch.
- * @returns A Promise that resolves to the Character object.
- */
-
-export const getAllCharacters = async (): Promise<Character[]> => {
-  try {
-    // Use the generic <Character[]> to type the expected response data
-    const response = await axios.get<Character[]>(`/api/character`);
-
-    // response.data is now strongly typed as Character[]
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching characters:", error);
-    // Re-throw the error so the calling component can handle it
-    throw error;
-  }
-}
 
 export const getCharacter = async (id: string): Promise<Character> => {
   try {

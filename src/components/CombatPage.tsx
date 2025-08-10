@@ -9,6 +9,7 @@ import { useSearchParams } from 'react-router-dom';
 import {getCharacter} from "@/components/CharacterPage.tsx";
 import {Character, Race, Class} from "@/models/Character.ts";
 import {Item} from "@/models/Item.ts";
+import { useMonster } from '@/hooks/useMonster';
 
 interface Combatant {
   id: number;
@@ -31,6 +32,29 @@ interface Combatant {
   reactionUsed: boolean;
 }
 
+// Monster combatant interface (no longer extends Combatant)
+interface MonsterCombatant {
+  id: number;
+  name: string;
+  ac: number;
+  maxHp: number;
+  currentHp: number;
+  initiative: number;
+  position: { x: number; y: number };
+  movement: number;
+  image?: string;
+  monsterType?: string;
+  xp?: number;
+  alignment?: string;
+  challenge_rating?: number;
+  actions: { name: string; desc: string; attackBonus?: number; damage?: string; damageType?: string }[];
+  multiattack_type?: string;
+  multiattack?: {
+    attacks: { name: string; count: number }[];
+    desc: string;
+  };
+}
+
 interface GridPosition {
   x: number;
   y: number;
@@ -42,7 +66,7 @@ const rollInitiative = (dexModifier: number) => rollD20() + dexModifier;
 
 const getCombantantById = async (combatantId: number, positionX: number, positionY: number): Promise<Combatant | undefined> => {
   try {
-    var combatant = await getCharacter(combatantId.toString());
+    const combatant = await getCharacter(combatantId.toString());
     const dexModifier = Math.floor((combatant.dexterity || 10 - 10) / 2);
     return {
       id: combatant.id,
@@ -84,54 +108,15 @@ const CombatPage: React.FC = () => {
   const [combatStarted, setCombatStarted] = useState(false);
   const [combatants, setCombatants] = useState<Combatant[]>([]);
 
-  // Initialize NPCs with IDs starting at 100
-  const npcs: Combatant[] = [
-    {
-      id: 100,
-      name: 'Direwolf Alpha',
-      type: 'npc',
-      ac: 14,
-      maxHp: 37,
-      currentHp: 37,
-      initiative: 0, // Will be rolled
-      dexterityModifier: 2,
-      position: { x: 5, y: 4 },
-      movement: 50,
-      movementUsed: 0,
-      equipment: ['Natural Weapons'],
-      actions: [
-        { name: 'Bite', range: 5, attackBonus: 5, damage: '2d6+3' },
-        { name: 'Knockdown', range: 5, attackBonus: 4, damage: '1d4+3' }
-      ],
-      isMoving: false,
-      isTargeting: false,
-      selectedAction: null,
-      hasActedThisTurn: false,
-      reactionUsed: false
-    },
-    {
-      id: 101,
-      name: 'Direwolf',
-      type: 'npc',
-      ac: 14,
-      maxHp: 37,
-      currentHp: 37,
-      initiative: 0, // Will be rolled
-      dexterityModifier: 2,
-      position: { x: 6, y: 6 },
-      movement: 50,
-      movementUsed: 0,
-      equipment: ['Natural Weapons'],
-      actions: [
-        { name: 'Bite', range: 5, attackBonus: 4, damage: '2d6+2' }
-      ],
-      isMoving: false,
-      isTargeting: false,
-      selectedAction: null,
-      hasActedThisTurn: false,
-      reactionUsed: false
+  // Use the useMonster hook for enemy data
+  const { monster, loading: monsterLoading, error: monsterError } = useMonster('brown-bear');
+  const [monsterCombatants, setMonsterCombatants] = useState<MonsterCombatant[]>([]);
+
+  useEffect(() => {
+    if (monster) {
+      setMonsterCombatants([monster]);
     }
-  ];
+  }, [monster]);
 
   // Load available players on component mount
   useEffect(() => {
@@ -173,7 +158,6 @@ const CombatPage: React.FC = () => {
   const loadCombat = async (playerIds: number[]) => {
     try {
       const playerCombatants: Combatant[] = [];
-      
       for (let i = 0; i < playerIds.length; i++) {
         const playerId = playerIds[i];
         const playerCombatant = await getCombantantById(playerId, 2 + i, 1 + i);
@@ -181,13 +165,37 @@ const CombatPage: React.FC = () => {
           playerCombatants.push(playerCombatant);
         }
       }
-      
+      // Convert MonsterCombatant to Combatant for combat
+      const monsterAsCombatants: Combatant[] = monsterCombatants.map((m, idx) => ({
+        id: m.id,
+        name: m.name,
+        type: 'npc',
+        ac: m.ac,
+        maxHp: m.maxHp,
+        currentHp: m.currentHp,
+        initiative: 0,
+        dexterityModifier: 0,
+        position: { x: 5 + idx, y: 4 + idx },
+        movement: m.movement,
+        movementUsed: 0,
+        equipment: [],
+        actions: m.actions.map(a => ({
+          name: a.name,
+          range: 5, // Default range for monster actions
+          attackBonus: a.attackBonus || 0,
+          damage: a.damage || '',
+        })),
+        isMoving: false,
+        isTargeting: false,
+        selectedAction: null,
+        hasActedThisTurn: false,
+        reactionUsed: false
+      }));
       // Roll initiative for all combatants
-      const allCombatants = [...npcs, ...playerCombatants];
+      const allCombatants = [...monsterAsCombatants, ...playerCombatants];
       allCombatants.forEach(combatant => {
         combatant.initiative = rollInitiative(combatant.dexterityModifier);
       });
-      
       setCombatants(allCombatants);
     } catch (error) {
       console.error('Error loading combat:', error);
@@ -202,7 +210,6 @@ const CombatPage: React.FC = () => {
   }, [combatants.length]);
 
   const [currentTurnIndex, setCurrentTurnIndex] = useState(0);
-  const [selectedCombatant, setSelectedCombatant] = useState<string | null>(null);
 
   // Sort combatants by initiative (highest first)
   const initiativeOrder = [...combatants].sort((a, b) => b.initiative - a.initiative);
@@ -251,26 +258,71 @@ const CombatPage: React.FC = () => {
     ));
   };
 
-  const calculateDistance = (pos1: { x: number; y: number }, pos2: { x: number; y: number }) => {
-    return Math.abs(pos1.x - pos2.x) + Math.abs(pos1.y - pos2.y);
+  // Multiattack logic for enemies
+  const canEnemyMultiattack = (combatant: Combatant): boolean => {
+    if (combatant.type !== 'npc') return false;
+    const monster = monsterCombatants.find(m => m.id === combatant.id);
+    return !!(monster && monster.multiattack_type === 'actions' && monster.multiattack && monster.multiattack.attacks.length > 0);
   };
 
-  const rollD20 = () => Math.floor(Math.random() * 20) + 1;
-  
-  const rollDamage = (damageString: string) => {
-    // Simple damage roll parser for formats like "1d8+3" or "2d6+2"
-    const match = damageString.match(/(\d+)d(\d+)(?:\+(\d+))?/);
-    if (!match) return 0;
-    
-    const numDice = parseInt(match[1]);
-    const dieSize = parseInt(match[2]);
-    const bonus = parseInt(match[3] || '0');
-    
-    let total = bonus;
-    for (let i = 0; i < numDice; i++) {
-      total += Math.floor(Math.random() * dieSize) + 1;
+  // Track multiattack state for the current enemy
+  const [multiattackState, setMultiattackState] = useState<{ [combatantId: number]: { [attackName: string]: number } }>({});
+
+  useEffect(() => {
+    // Reset multiattack state at the start of each turn
+    if (currentCombatant && canEnemyMultiattack(currentCombatant)) {
+      const monster = monsterCombatants.find(m => m.id === currentCombatant.id);
+      if (monster && monster.multiattack) {
+        const attackCounts: { [attackName: string]: number } = {};
+        monster.multiattack.attacks.forEach(a => {
+          attackCounts[a.name] = 0;
+        });
+        setMultiattackState(prev => ({ ...prev, [currentCombatant.id]: attackCounts }));
+      }
     }
-    return total;
+  }, [currentCombatant?.id]);
+
+  // Helper to get remaining multiattacks for the current enemy
+  const getRemainingMultiattacks = (combatant: Combatant) => {
+    const monster = monsterCombatants.find(m => m.id === combatant.id);
+    if (!monster || !monster.multiattack) return {};
+    const state = multiattackState[combatant.id] || {};
+    const remaining: { [attackName: string]: number } = {};
+    monster.multiattack.attacks.forEach(a => {
+      remaining[a.name] = a.count - (state[a.name] || 0);
+    });
+    return remaining;
+  };
+
+  // Override handleAction for enemy multiattack
+  const handleEnemyMultiattackAction = (combatantId: number, action: { name: string; range: number; attackBonus: number; damage: string }) => {
+    const combatant = combatants.find(c => c.id === combatantId);
+    if (!combatant || combatant.hasActedThisTurn) return;
+    if (!canEnemyMultiattack(combatant)) return;
+    // Only allow if this attack is still available for multiattack
+    const remaining = getRemainingMultiattacks(combatant);
+    if ((remaining[action.name] || 0) <= 0) return;
+    // Set targeting for this action
+    setCombatants(prev => prev.map(c =>
+      c.id === combatantId ? { ...c, isTargeting: !c.isTargeting, selectedAction: action.name, isMoving: false } : { ...c, isTargeting: false, selectedAction: null, isMoving: false }
+    ));
+  };
+
+  // After a successful attack, increment multiattack usage and check if all are done
+  const afterEnemyAttack = (combatantId: number, actionName: string) => {
+    setMultiattackState(prev => {
+      const state = { ...(prev[combatantId] || {}) };
+      state[actionName] = (state[actionName] || 0) + 1;
+      return { ...prev, [combatantId]: state };
+    });
+    // Check if all multiattacks are used up
+    const combatant = combatants.find(c => c.id === combatantId);
+    if (!combatant) return;
+    const remaining = getRemainingMultiattacks(combatant);
+    const allDone = Object.values(remaining).every(v => v <= 0);
+    if (allDone) {
+      setCombatants(prev => prev.map(c => c.id === combatantId ? { ...c, hasActedThisTurn: true, isTargeting: false, selectedAction: null } : c));
+    }
   };
 
   const attackTarget = (targetId: number) => {
@@ -455,72 +507,147 @@ const CombatPage: React.FC = () => {
     setSearchParams({});
   };
 
-  const CombatantCard: React.FC<{ combatant: Combatant; isCurrentTurn: boolean }> = ({ combatant, isCurrentTurn }) => {
+  // Player card for combatants
+  const PlayerCombatantCard: React.FC<{ combatant: Combatant; isCurrentTurn: boolean }> = ({ combatant, isCurrentTurn }) => {
     const isDowned = combatant.currentHp === 0;
-    
     return (
       <Card className={`mb-4 ${isCurrentTurn ? 'ring-2 ring-gold border-gold bg-gold/10' : ''} ${isDowned ? 'opacity-50 grayscale' : ''}`}>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg flex items-center justify-between">
-          {combatant.name} {isDowned && <Badge variant="destructive">Downed</Badge>}
-          <Badge variant={combatant.type === 'player' ? 'default' : 'destructive'}>
-            Initiative: {combatant.initiative}
-          </Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="flex items-center gap-4 text-sm">
-          <div className="flex items-center gap-1">
-            <Shield className="h-4 w-4" />
-            <span>AC: {combatant.ac}</span>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg flex items-center justify-between">
+            {combatant.name} {isDowned && <Badge variant="destructive">Downed</Badge>}
+            <Badge variant="default">Initiative: {combatant.initiative}</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-1">
+              <Shield className="h-4 w-4" />
+              <span>AC: {combatant.ac}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Heart className="h-4 w-4" />
+              <span>HP: {combatant.currentHp}/{combatant.maxHp}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            <Heart className="h-4 w-4" />
-            <span>HP: {combatant.currentHp}/{combatant.maxHp}</span>
-          </div>
-        </div>
-        
-        <div>
-          <h4 className="font-semibold text-sm mb-1">Equipment:</h4>
-          <div className="flex flex-wrap gap-1">
-            {combatant.equipment.map((item, idx) => (
-              <Badge key={idx} variant="outline" className="text-xs">{item}</Badge>
-            ))}
-          </div>
-        </div>
-        
-        {isCurrentTurn && !isDowned && (
-          <div className="space-y-2">
-            <h4 className="font-semibold text-sm">Actions:</h4>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                variant={combatant.isMoving ? "default" : "outline"}
-                onClick={() => handleMovement(combatant.id)}
-                className="flex items-center gap-1"
-                disabled={combatant.movementUsed >= combatant.movement}
-              >
-                <Move className="h-3 w-3" />
-                Move ({Math.floor((combatant.movement - combatant.movementUsed) / 5)} left)
-              </Button>
-              {combatant.actions.map((action, idx) => (
-                <Button 
-                  key={idx} 
-                  size="sm" 
-                  variant={combatant.isTargeting && combatant.selectedAction === action.name ? "default" : "outline"}
-                  onClick={() => handleAction(combatant.id, action)}
-                  className="flex items-center gap-1"
-                  disabled={combatant.hasActedThisTurn}
-                >
-                  {action.range > 0 ? <Target className="h-3 w-3" /> : <Sword className="h-3 w-3" />}
-                  {action.name} {combatant.hasActedThisTurn && '✓'}
-                </Button>
+          <div>
+            <h4 className="font-semibold text-sm mb-1">Equipment:</h4>
+            <div className="flex flex-wrap gap-1">
+              {combatant.equipment.map((item, idx) => (
+                <Badge key={idx} variant="outline" className="text-xs">{item}</Badge>
               ))}
             </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+          {isCurrentTurn && !isDowned && (
+            <div className="space-y-2">
+              <h4 className="font-semibold text-sm">Actions:</h4>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant={combatant.isMoving ? "default" : "outline"}
+                  onClick={() => handleMovement(combatant.id)}
+                  className="flex items-center gap-1"
+                  disabled={combatant.movementUsed >= combatant.movement}
+                >
+                  <Move className="h-3 w-3" />
+                  Move ({Math.floor((combatant.movement - combatant.movementUsed) / 5)} left)
+                </Button>
+                {combatant.actions.map((action, idx) => (
+                  <Button 
+                    key={idx} 
+                    size="sm" 
+                    variant={combatant.isTargeting && combatant.selectedAction === action.name ? "default" : "outline"}
+                    onClick={() => handleAction(combatant.id, action)}
+                    className="flex items-center gap-1"
+                    disabled={combatant.hasActedThisTurn}
+                  >
+                    {action.range > 0 ? <Target className="h-3 w-3" /> : <Sword className="h-3 w-3" />}
+                    {action.name} {combatant.hasActedThisTurn && '✓'}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // Enemy card for combatants
+  const EnemyCombatantCard: React.FC<{ combatant: Combatant; isCurrentTurn: boolean }> = ({ combatant, isCurrentTurn }) => {
+    const isDowned = combatant.currentHp === 0;
+    const monster = monsterCombatants.find(m => m.id === combatant.id);
+    const hasMultiattack = monster?.multiattack_type === 'actions' && monster?.multiattack && monster.multiattack.attacks.length > 0;
+    return (
+      <Card className={`mb-4 ${isCurrentTurn ? 'ring-2 ring-red-600 border-red-600 bg-red-600/10' : ''} ${isDowned ? 'opacity-50 grayscale' : ''}`}>
+        <CardHeader className="pb-2 flex flex-col items-center">
+          {monster?.image && (
+            <img src={monster.image} alt={combatant.name} className="w-16 h-16 object-contain mb-2 rounded-full border" />
+          )}
+          <CardTitle className="text-lg flex items-center justify-between w-full">
+            {combatant.name} {isDowned && <Badge variant="destructive">Downed</Badge>}
+            <Badge variant="destructive">Initiative: {combatant.initiative}</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 flex flex-col items-center">
+          <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-1">
+              <Shield className="h-4 w-4" />
+              <span>AC: {combatant.ac}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Heart className="h-4 w-4" />
+              <span>HP: {combatant.currentHp}/{combatant.maxHp}</span>
+            </div>
+          </div>
+          {monster?.challenge_rating !== undefined && (
+            <Badge variant="secondary">CR: {monster.challenge_rating}</Badge>
+          )}
+          {isCurrentTurn && !isDowned && (
+            <div className="space-y-2 w-full">
+              <h4 className="font-semibold text-sm">Actions:</h4>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant={combatant.isMoving ? "default" : "outline"}
+                  onClick={() => handleMovement(combatant.id)}
+                  className="flex items-center gap-1"
+                  disabled={combatant.movementUsed >= combatant.movement}
+                >
+                  <Move className="h-3 w-3" />
+                  Move ({Math.floor((combatant.movement - combatant.movementUsed) / 5)} left)
+                </Button>
+                {/* Only show attack actions, never show Multiattack as a button if multiattack is enabled */}
+                {combatant.actions.filter(action => {
+                  // Hide Multiattack button if multiattack logic is present
+                  if (hasMultiattack && action.name.toLowerCase() === 'multiattack') return false;
+                  return true;
+                }).map((action, idx) => (
+                  <Button
+                    key={idx}
+                    size="sm"
+                    variant={combatant.isTargeting && combatant.selectedAction === action.name ? "default" : "outline"}
+                    onClick={() => hasMultiattack ? handleEnemyMultiattackAction(combatant.id, action) : handleAction(combatant.id, action)}
+                    className="flex items-center gap-1"
+                    disabled={combatant.hasActedThisTurn || (hasMultiattack && getRemainingMultiattacks(combatant)[action.name] <= 0)}
+                  >
+                    {action.range > 0 ? <Target className="h-3 w-3" /> : <Sword className="h-3 w-3" />}
+                    {action.name}
+                    {hasMultiattack && getRemainingMultiattacks(combatant)[action.name] !== undefined && (
+                      <span className="ml-1 text-xs text-orange-700">x{getRemainingMultiattacks(combatant)[action.name]}</span>
+                    )}
+                  </Button>
+                ))}
+                {/* Show multiattack info if present */}
+                {hasMultiattack && (
+                  <div className="w-full text-xs text-center mt-2 text-orange-700 bg-orange-100 rounded p-1">
+                    Multiattack: {monster.multiattack.desc}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     );
   };
 
@@ -644,7 +771,7 @@ const CombatPage: React.FC = () => {
           <div className="w-72 space-y-3">
             <h2 className="text-xl font-cinzel font-semibold text-parchment mb-4">Players</h2>
             {initiativeOrder.filter(c => c.type === 'player').map(combatant => (
-              <CombatantCard 
+              <PlayerCombatantCard 
                 key={combatant.id} 
                 combatant={combatant} 
                 isCurrentTurn={combatant.id === currentCombatant.id}
@@ -703,7 +830,7 @@ const CombatPage: React.FC = () => {
           <div className="w-72 space-y-3">
             <h2 className="text-xl font-cinzel font-semibold text-parchment mb-4">Enemies</h2>
             {initiativeOrder.filter(c => c.type === 'npc').map(combatant => (
-              <CombatantCard 
+              <EnemyCombatantCard 
                 key={combatant.id} 
                 combatant={combatant} 
                 isCurrentTurn={combatant.id === currentCombatant.id}
@@ -714,6 +841,26 @@ const CombatPage: React.FC = () => {
       </div>
     </div>
   );
+};
+
+// Utility: Calculate Manhattan distance between two grid positions
+const calculateDistance = (pos1: { x: number; y: number }, pos2: { x: number; y: number }) => {
+  return Math.abs(pos1.x - pos2.x) + Math.abs(pos1.y - pos2.y);
+};
+
+// Utility: Roll damage from a dice string like "2d6+3"
+const rollDamage = (damageString: string) => {
+  if (!damageString) return 0;
+  const match = damageString.match(/(\d+)d(\d+)(?:\+(\d+))?/);
+  if (!match) return 0;
+  const numDice = parseInt(match[1]);
+  const dieSize = parseInt(match[2]);
+  const bonus = parseInt(match[3] || '0');
+  let total = bonus;
+  for (let i = 0; i < numDice; i++) {
+    total += Math.floor(Math.random() * dieSize) + 1;
+  }
+  return total;
 };
 
 export default CombatPage;
