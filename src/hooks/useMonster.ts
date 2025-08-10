@@ -2,6 +2,17 @@
 import { GET_MONSTER } from '@/lib/queries/monster';
 import { useState, useEffect } from 'react';
 
+export interface monsterAction {
+  name: string;
+  desc: string;
+  attack_bonus?: number;
+  damage?: string;
+  damageType?: string;
+  multiattack_type?: string;
+  actions?: { action_name: string; count: number }[];
+  dc?: number;
+}
+
 export interface MonsterCombatant {
   id: number;
   name: string;
@@ -16,7 +27,7 @@ export interface MonsterCombatant {
   xp?: number;
   alignment?: string;
   challenge_rating?: number;
-  actions: { name: string; desc: string; attackBonus?: number; damage?: string; damageType?: string }[];
+  actions: monsterAction[];
   multiattack_type?: string;
   multiattack?: {
     attacks: { name: string; count: number }[];
@@ -47,10 +58,12 @@ export const useMonster = (monsterIndex: string) => {
             const match = m.speed.walk.match(/(\d+)/);
             if (match) movement = parseInt(match[1], 10);
           }
-          let multiattack_type = m.multiattack_type;
-          let multiattack: MonsterCombatant['multiattack'] = undefined;
+          // Multiattack logic
+          let multiattack_type: string | undefined = undefined;
+          let multiattack: { attacks: { name: string; count: number }[]; desc: string } | undefined = undefined;
           const multiattackAction = (m.actions || []).find((a: any) => a.name === 'Multiattack');
-          if (multiattackAction && multiattack_type === 'actions') {
+          if (multiattackAction && multiattackAction.multiattack_type === 'actions') {
+            multiattack_type = 'actions';
             const attacks: { name: string; count: number }[] = [];
             if (multiattackAction.actions && Array.isArray(multiattackAction.actions)) {
               multiattackAction.actions.forEach((a: any) => {
@@ -84,7 +97,7 @@ export const useMonster = (monsterIndex: string) => {
             multiattack,
           });
           //log the monster data for debugging
-            console.log('Monster data:', m);
+          console.log('Monster data:', m);
         } else {
           setError('No monster data found.');
         }
@@ -95,4 +108,3 @@ export const useMonster = (monsterIndex: string) => {
 
   return { monster, loading, error };
 };
-

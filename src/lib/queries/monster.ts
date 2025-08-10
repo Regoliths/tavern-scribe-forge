@@ -67,3 +67,22 @@ export const GET_MONSTER = gql`
   }
 `;
 
+export const GET_MONSTER_TYPES = gql`
+  query GetMonsterTypes {
+    monsters {
+      type
+      xp
+    }
+  }
+`;
+
+export const SEARCH_MONSTERS = gql`
+  query SearchMonsters($type: String!, $search: String) {
+    monsters(type: $type, search: $search) {
+      index
+      name
+      type
+      image
+    }
+  }
+`;
