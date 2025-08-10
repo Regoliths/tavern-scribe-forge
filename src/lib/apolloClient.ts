@@ -31,16 +31,59 @@ export const GET_EQUIPMENT_BY_CATEGORY = gql`
     equipmentCategory(index: $index) {
       name
       equipment {
-        index
-        name
-        desc
-        equipment_category {
+        ... on IEquipment {
+          index
           name
+          weight
+          cost {
+            quantity
+            unit
+          }
         }
-        weight
-        cost {
-          quantity
-          unit
+        ... on Ammunition {
+          index
+          name
+          equipment_category {
+            name
+          }
+          weight
+          cost {
+            quantity
+            unit
+          }
+        }
+        ... on Armor {
+          index
+          name
+          equipment_category {
+            name
+          }
+          weight
+          cost {
+            quantity
+            unit
+          }
+        }
+        ... on Gear {
+          index
+          name
+          equipment_category {
+            name
+          }
+          weight
+          cost {
+            quantity
+            unit
+          }
+        }
+        ... on MagicItem {
+          index
+          name
+          desc
+          equipment_category {
+            name
+          }
+
         }
       }
     }
