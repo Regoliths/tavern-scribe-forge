@@ -65,7 +65,7 @@ export const CharacterPage = () => {
   const { toast } = useToast();
   
   // Use the equipment hook to fetch D&D API data
-  const { equipment: dndEquipment, loading: equipmentLoading, error: equipmentError } = useEquipment();
+  const { categories, selectedCategory, setSelectedCategory, equipment: dndEquipment, loading: equipmentLoading, error: equipmentError } = useEquipment();
 
   const [character, setCharacter] = useState<Character | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -111,7 +111,10 @@ export const CharacterPage = () => {
             type: item.type,
             quantity: item.quantity,
             weight: item.weight,
-            cost: item.cost
+            cost: item.cost,
+            damageDice: item.damageDice,
+            damageType: item.damageType,
+            armorClass: item.armorClass,
           })) || []
         },
         inventory: {
@@ -299,6 +302,27 @@ export const CharacterPage = () => {
   const backpackWeight = calculateTotalWeight(character?.inventory?.items ?? []);
   const totalWeight = equippedWeight + backpackWeight;
 
+  // Calculate AC based on equipped items and D&D 5e rules
+const calculateAC = () => {
+  const dexMod = getModifier(character.dexterity) ? parseInt(getModifier(character.dexterity)) : 0;
+  let baseAC = character.armorClass || 10 + dexMod;
+
+  // Find all armor items (excluding shields)
+  const armors = character.equipment?.items.filter(item => item.type === 'armor') || [];
+  // Get the highest armorClass among all armors, or 0 if none
+  const armorAC = armors.reduce((max, item) => Math.max(max, item.armorClass || 0), 0);
+
+  // Find if a shield is equipped
+  const hasShield = character.equipment?.items.some(item => item.armorType === 'shield');
+
+  // AC = base + best armor + shield bonus (if any)
+  let totalAC = baseAC + armorAC;
+  if (hasShield) {
+    totalAC += 2;
+  }
+  return totalAC;
+};
+
   // Component for rendering inventory items with edit controls
   const EditableInventoryItemComponent = ({ item, fromEquipment = false }: { item: Item; fromEquipment?: boolean }) => (
     <div className="bg-parchment/10 border border-copper rounded p-3 mb-2">
@@ -306,6 +330,16 @@ export const CharacterPage = () => {
         <div className="flex-1">
           <div className="text-parchment font-medium">{item.name}</div>
           <Badge variant="outline" className="text-xs mt-1">{item.type}</Badge>
+          {/* Show weapon/armor/shield details */}
+          {item.damageDice && (
+            <div className="text-copper text-xs mt-1">Damage: {item.damageDice} {item.damageType && `(${item.damageType})`}</div>
+          )}
+          {item.armorClass && item.armorType !== 'shield' && (
+            <div className="text-copper text-xs mt-1">AC: {item.armorClass} {item.armorType && `(${item.armorType})`}</div>
+          )}
+          {item.armorType === 'shield' && (
+            <div className="text-copper text-xs mt-1">Shield Bonus: +{item.acBonus || 2} AC</div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <div className="text-right text-sm">
@@ -335,25 +369,40 @@ export const CharacterPage = () => {
   const AddItemComponent = ({ toEquipment = false }: { toEquipment?: boolean }) => (
     <div className="bg-parchment/5 border border-copper border-dashed rounded p-3 mb-2">
       <div className="space-y-3">
-        {equipmentLoading ? (
-          <div className="text-parchment">Loading D&D equipment...</div>
-        ) : equipmentError ? (
-          <div className="text-red-400">Error loading equipment: {equipmentError}</div>
-        ) : (
-          <Select value={selectedItem} onValueChange={setSelectedItem}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select an item to add" />
-            </SelectTrigger>
-            <SelectContent>
-              {dndEquipment.map((item) => (
-                <SelectItem key={item.id} value={item.id.toString()}>
-                  {item.name} ({item.type}) - {item.cost} gp
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {/* Category selection */}
+        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select a category" />
+          </SelectTrigger>
+          <SelectContent>
+            {categories.map((cat) => (
+              <SelectItem key={cat.index} value={cat.index}>
+                {cat.name || cat.index}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {/* Item selection, only show if a category is selected */}
+        {selectedCategory && (
+          equipmentLoading ? (
+            <div className="text-parchment">Loading D&D equipment...</div>
+          ) : equipmentError ? (
+            <div className="text-red-400">Error loading equipment: {equipmentError}</div>
+          ) : (
+            <Select value={selectedItem} onValueChange={setSelectedItem}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select an item to add" />
+              </SelectTrigger>
+              <SelectContent>
+                {dndEquipment.map((item) => (
+                  <SelectItem key={item.id} value={item.id.toString()}>
+                    {item.name} ({item.type}) - {item.cost} gp
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )
         )}
-        
         <div className="flex items-center gap-2">
           <Input
             type="number"
@@ -446,7 +495,7 @@ export const CharacterPage = () => {
                   <div className="text-center">
                     <div className="bg-parchment/10 border border-copper rounded p-3">
                       <div className="text-sm font-medium text-copper mb-1">Armor Class</div>
-                      <div className="text-2xl font-bold text-parchment">{character.armorClass}</div>
+                      <div className="text-2xl font-bold text-parchment">{calculateAC()}</div>
                     </div>
                   </div>
                   <div className="text-center">

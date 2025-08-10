@@ -25,6 +25,15 @@ export const GET_EQUIPMENT = gql`
   }
 `;
 
+// GraphQL query to fetch equipment categories
+export const GET_EQUIPMENT_CATEGORIES = gql`
+  query GetEquipmentCategory {
+    equipmentCategories {
+      index
+    }
+  }
+  `;
+
 // GraphQL query to fetch equipment by category
 export const GET_EQUIPMENT_BY_CATEGORY = gql`
   query GetEquipmentByCategory($index: String!) {
@@ -39,6 +48,7 @@ export const GET_EQUIPMENT_BY_CATEGORY = gql`
             quantity
             unit
           }
+
         }
         ... on Ammunition {
           index
@@ -63,6 +73,10 @@ export const GET_EQUIPMENT_BY_CATEGORY = gql`
             quantity
             unit
           }
+          armor_class {
+            base
+          }
+
         }
         ... on Gear {
           index
@@ -83,7 +97,24 @@ export const GET_EQUIPMENT_BY_CATEGORY = gql`
           equipment_category {
             name
           }
-
+        }
+        ... on Weapon {
+          index
+          name
+          weight
+          equipment_category {
+            name
+          }
+          damage {
+            damage_dice
+            damage_type {
+              name
+            }
+          }
+          cost {
+            quantity
+            unit
+          }
         }
       }
     }

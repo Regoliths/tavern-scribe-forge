@@ -6,6 +6,11 @@
     quantity: number;
     weight: number;
     cost: number;
+    damageDice?: string;
+    damageType?: string;
+    armorClass?: number;
+    acBonus?: number;
+    armorType?: string;
 }
 
 export class Equipment {
