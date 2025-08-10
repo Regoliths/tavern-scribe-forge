@@ -237,10 +237,29 @@ const CombatPage: React.FC = () => {
     ));
   };
 
+  // Track which type of action (multiattack or not) was used this turn for each combatant
+  const [multiattackTurnType, setMultiattackTurnType] = useState<{ [combatantId: number]: 'multiattack' | 'single' | null }>({});
+
+  // Helper to check if an action is part of multiattack
+  const isMultiattackAction = (combatant: Combatant, actionName: string) => {
+    const monster = monsterCombatants.find(m => m.id === combatant.id);
+    if (!monster || !monster.multiattack) return false;
+    return monster.multiattack.attacks.some(a => a.name === actionName);
+  };
+
   const handleAction = (combatantId: number, action: { name: string; range: number; attackBonus: number; damage: string }) => {
     const combatant = combatants.find(c => c.id === combatantId);
     if (!combatant || combatant.hasActedThisTurn) return;
-    
+    // If this is an enemy with multiattack, check restrictions
+    if (combatant.type === 'npc' && canEnemyMultiattack(combatant)) {
+      const isMulti = isMultiattackAction(combatant, action.name);
+      // Only restrict if a multiattack or single action has already been chosen this turn
+      if (multiattackTurnType[combatantId] === 'single' && isMulti) return;
+      if (multiattackTurnType[combatantId] === 'multiattack' && !isMulti) return;
+      // If neither has been chosen, allow any action
+      if (isMulti && multiattackTurnType[combatantId] !== 'multiattack') setMultiattackTurnType(prev => ({ ...prev, [combatantId]: 'multiattack' }));
+      if (!isMulti && multiattackTurnType[combatantId] !== 'single') setMultiattackTurnType(prev => ({ ...prev, [combatantId]: 'single' }));
+    }
     if (action.range === 0) {
       // Non-attack actions (Dodge, Dash, Hide)
       setCombatants(prev => prev.map(c => 
@@ -302,7 +321,9 @@ const CombatPage: React.FC = () => {
     // Only allow if this attack is still available for multiattack
     const remaining = getRemainingMultiattacks(combatant);
     if ((remaining[action.name] || 0) <= 0) return;
-    // Set targeting for this action
+    // If already used a non-multiattack action, block
+    if (multiattackTurnType[combatantId] === 'single') return;
+    setMultiattackTurnType(prev => ({ ...prev, [combatantId]: 'multiattack' }));
     setCombatants(prev => prev.map(c =>
       c.id === combatantId ? { ...c, isTargeting: !c.isTargeting, selectedAction: action.name, isMoving: false } : { ...c, isTargeting: false, selectedAction: null, isMoving: false }
     ));
@@ -318,10 +339,23 @@ const CombatPage: React.FC = () => {
     // Check if all multiattacks are used up
     const combatant = combatants.find(c => c.id === combatantId);
     if (!combatant) return;
-    const remaining = getRemainingMultiattacks(combatant);
-    const allDone = Object.values(remaining).every(v => v <= 0);
+    const monster = monsterCombatants.find(m => m.id === combatantId);
+    if (!monster || !monster.multiattack) return;
+    const state = multiattackState[combatantId] || {};
+    // Calculate remaining for each attack
+    let allDone = true;
+    for (const atk of monster.multiattack.attacks) {
+      const used = (state[atk.name] || 0) + (atk.name === actionName ? 1 : 0); // include this attack
+      if (used < atk.count) {
+        allDone = false;
+        break;
+      }
+    }
     if (allDone) {
       setCombatants(prev => prev.map(c => c.id === combatantId ? { ...c, hasActedThisTurn: true, isTargeting: false, selectedAction: null } : c));
+    } else {
+      // Allow further attacks this turn, but clear targeting
+      setCombatants(prev => prev.map(c => c.id === combatantId ? { ...c, isTargeting: false, selectedAction: null } : c));
     }
   };
 
@@ -354,7 +388,7 @@ const CombatPage: React.FC = () => {
       
       setCombatants(prev => prev.map(c => 
         c.id === targetId ? { ...c, currentHp: newHp } : 
-        c.id === attacker.id ? { ...c, isTargeting: false, selectedAction: null, hasActedThisTurn: true, isMoving: false } : c
+        c.id === attacker.id ? { ...c, isTargeting: false, selectedAction: null, hasActedThisTurn: attacker.type === 'npc' && canEnemyMultiattack(attacker) ? c.hasActedThisTurn : true, isMoving: false } : c
       ));
       
       toast({
@@ -369,10 +403,14 @@ const CombatPage: React.FC = () => {
           variant: "destructive",
         });
       }
+      // Multiattack logic: only call afterEnemyAttack for monsters with multiattack
+      if (attacker.type === 'npc' && canEnemyMultiattack(attacker)) {
+        afterEnemyAttack(attacker.id, action.name);
+      }
     } else {
       // Miss
       setCombatants(prev => prev.map(c => 
-        c.id === attacker.id ? { ...c, isTargeting: false, selectedAction: null, hasActedThisTurn: true, isMoving: false } : c
+        c.id === attacker.id ? { ...c, isTargeting: false, selectedAction: null, hasActedThisTurn: attacker.type === 'npc' && canEnemyMultiattack(attacker) ? c.hasActedThisTurn : true, isMoving: false } : c
       ));
       
       toast({
@@ -380,6 +418,9 @@ const CombatPage: React.FC = () => {
         description: `${attacker.name}'s ${action.name} missed ${target.name}! (Rolled ${attackRoll}+${action.attackBonus}=${totalAttack} vs AC ${target.ac})`,
         variant: "destructive",
       });
+      if (attacker.type === 'npc' && canEnemyMultiattack(attacker)) {
+        afterEnemyAttack(attacker.id, action.name);
+      }
     }
   };
 
