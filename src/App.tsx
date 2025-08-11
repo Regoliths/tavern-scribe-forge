@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import { CharacterPage } from "./components/CharacterPage";
 import CombatPage from "./components/CombatPage";
+import {CharacterCreator} from "@/components/CharacterCreator.tsx";
 
 const queryClient = new QueryClient();
 
@@ -18,6 +19,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/create" element={<CharacterCreator/>} /> 
           <Route path="/character/:id" element={<CharacterPage />} />
           <Route path="/combat" element={<CombatPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

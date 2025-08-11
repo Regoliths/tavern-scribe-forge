@@ -1,7 +1,7 @@
-import { CharacterCreator } from "@/components/CharacterCreator";
+import LandingPage from "@/pages/LandingPage.tsx";
 
 const Index = () => {
-  return <CharacterCreator />;
+  return <LandingPage />;
 };
 
 export default Index;
