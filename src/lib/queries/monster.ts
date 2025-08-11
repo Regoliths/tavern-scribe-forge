@@ -77,12 +77,38 @@ export const GET_MONSTER_TYPES = gql`
 `;
 
 export const SEARCH_MONSTERS = gql`
-  query SearchMonsters($type: String!, $search: String) {
-    monsters(type: $type, search: $search) {
+  query SearchMonsters($type: String!) {
+    monsters(type: $type) {
       index
       name
       type
       image
+      challenge_rating
+      hit_points
+      xp
+      armor_class {
+        ... on ArmorClassDex {
+          type
+          value
+        }
+        ... on ArmorClassNatural {
+          type
+          value
+        }
+        ... on ArmorClassArmor {
+          type
+          value
+        }
+        ... on ArmorClassSpell {
+          type
+          value
+
+        }
+        ... on ArmorClassCondition {
+          type
+          value
+        }
+      }
     }
   }
 `;

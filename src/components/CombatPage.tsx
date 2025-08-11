@@ -1,15 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Sword, Shield, Heart, Move, Target, Users } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { useSearchParams } from 'react-router-dom';
+import React, {useEffect, useState} from 'react';
+import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
+import {Button} from '@/components/ui/button';
+import {Badge} from '@/components/ui/badge';
+import {Checkbox} from '@/components/ui/checkbox';
+import {Heart, Move, Shield, Sword, Target, Users} from 'lucide-react';
+import {useToast} from '@/hooks/use-toast';
+import {useSearchParams} from 'react-router-dom';
 import {getCharacter} from "@/components/CharacterPage.tsx";
-import {Character, Race, Class} from "@/models/Character.ts";
+import {Character, Class, Race} from "@/models/Character.ts";
 import {Item} from "@/models/Item.ts";
-import { useMonster } from '@/hooks/useMonster';
+import {useMonster} from '@/hooks/useMonster';
+import {useMonsterSearch, useMonsterTypes} from "@/hooks/useMonsterList.ts";
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select.tsx";
 
 interface Combatant {
   id: number;
@@ -109,12 +111,12 @@ const CombatPage: React.FC = () => {
   const [combatants, setCombatants] = useState<Combatant[]>([]);
 
   // Use the useMonster hook for enemy data
-  const { monster, loading: monsterLoading, error: monsterError } = useMonster('brown-bear');
+  const { monster } = useMonster('brown-bear');
   const [monsterCombatants, setMonsterCombatants] = useState<MonsterCombatant[]>([]);
 
   useEffect(() => {
     if (monster) {
-      setMonsterCombatants([monster]);
+      setMonsterCombatants([monster,monster]);
     }
   }, [monster]);
 
@@ -202,7 +204,7 @@ const CombatPage: React.FC = () => {
     }
   };
 
-  // Reset turn index when combatants change to ensure highest initiative goes first
+  // Reset turn index when combatants change to ensure the highest initiative goes first
   useEffect(() => {
     if (combatants.length > 0) {
       setCurrentTurnIndex(0);
@@ -525,7 +527,15 @@ const CombatPage: React.FC = () => {
     }
   };
 
-  const startCombat = () => {
+  // Monster type selection state
+  const { types: monsterTypes, loading: monsterTypesLoading, error: monsterTypesError } = useMonsterTypes();
+  const [selectedMonsterType, setSelectedMonsterType] = useState<string>("");
+  const { monsters: monstersByType, loading: monstersLoading, error: monstersError } = useMonsterSearch(selectedMonsterType);
+  const [selectedMonsterId, setSelectedMonsterId] = useState<number | null>(null);
+  const [selectedMonsterIndex, setSelectedMonsterIndex] = useState<string | null>(null);
+  const { monster: selectedMonsterData } = useMonster(selectedMonsterIndex || '');
+
+  const startCombat = async () => {
     if (selectedPlayerIds.length === 0) {
       toast({
         title: "No Players Selected",
@@ -534,7 +544,16 @@ const CombatPage: React.FC = () => {
       });
       return;
     }
-    
+    if (!selectedMonsterData) {
+      toast({
+        title: "No Monster Selected",
+        description: "Please select a monster to start combat.",
+        variant: "destructive",
+      });
+      return;
+    }
+    console.log(selectedMonsterId);
+    setMonsterCombatants([selectedMonsterData]);
     const playersParam = selectedPlayerIds.join(',');
     setSearchParams({ players: playersParam });
     setCombatStarted(true);
@@ -659,9 +678,9 @@ const CombatPage: React.FC = () => {
                 </Button>
                 {/* Only show attack actions, never show Multiattack as a button if multiattack is enabled */}
                 {combatant.actions.filter(action => {
-                  // Hide Multiattack button if multiattack logic is present
-                  if (hasMultiattack && action.name.toLowerCase() === 'multiattack') return false;
-                  return true;
+                  // Hide Multi attack button if multiattack logic is present
+                  return !(hasMultiattack && action.name.toLowerCase() === 'multiattack');
+                  
                 }).map((action, idx) => (
                   <Button
                     key={idx}
@@ -746,16 +765,91 @@ const CombatPage: React.FC = () => {
             </CardContent>
           </Card>
 
-          <div className="flex justify-center gap-4">
+          <div className="flex justify-center gap-4 mb-6">
             <Button 
               onClick={startCombat}
-              disabled={selectedPlayerIds.length === 0}
+              disabled={selectedPlayerIds.length === 0 && !selectedMonsterId}
               size="lg"
-              className="px-8"
-            >
+              className="px-8">
               Start Combat
             </Button>
           </div>
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Select Monster Type
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {monsterTypesLoading && <div>Loading monster types...</div>}
+              {monsterTypesError && <div className="text-red-500">Error loading monster types: {monsterTypesError}</div>}
+              <Select value={selectedMonsterType} onValueChange={(e) => { setSelectedMonsterType(e); setSelectedMonsterId(null); setSelectedMonsterIndex(null); }}>
+                <SelectTrigger className="bg-parchment/10 text-parchment">
+                  <SelectValue placeholder="Select Monster Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {monsterTypes.map(type => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedMonsterType && (
+                <div className="mt-4">
+                  <div className="mb-2 font-semibold">Select Monster:</div>
+                  {monstersLoading && <div>Loading monsters...</div>}
+                  {monstersError && <div className="text-red-500">Error loading monsters: {monstersError}</div>}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {monstersByType.map((monster) => {
+                      // Find highest AC from armor_class array
+                      let highestAC = 0;
+                      if (Array.isArray(monster.armor_class)) {
+                        highestAC = monster.armor_class.reduce((max: number, ac: any) => Math.max(max, ac.value), 0);
+                      } else if (typeof monster.armor_class === 'object' && monster.armor_class?.value) {
+                        highestAC = monster.armor_class.value;
+                      }
+                      return (
+                        <div key={monster.index} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50">
+                          <Checkbox
+                            checked={selectedMonsterIndex === monster.index}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedMonsterId(monster.id);
+                                setSelectedMonsterIndex(monster.index);
+                              } else {
+                                setSelectedMonsterId(null);
+                                setSelectedMonsterIndex(null);
+                              }
+                            }}
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <h3 className="font-semibold">{monster.name}</h3>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Shield className="h-3 w-3" />
+                                AC: {highestAC}
+                                <Heart className="h-3 w-3" />
+                                HP: {monster.hit_points}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                              {monster.challenge_rating !== undefined && <Badge variant="secondary">CR: {monster.challenge_rating}</Badge>}
+                              {monster.xp !== undefined && <Badge variant="secondary">XP: {monster.xp}</Badge>}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {selectedMonsterId && (
+                    <div className="mt-2 text-muted-foreground">Selected monster: {monstersByType.find(m => m.id === selectedMonsterId)?.name}</div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
@@ -889,15 +983,14 @@ const calculateDistance = (pos1: { x: number; y: number }, pos2: { x: number; y:
   return Math.abs(pos1.x - pos2.x) + Math.abs(pos1.y - pos2.y);
 };
 
-// Utility: Roll damage from a dice string like "2d6+3"
+// Utility: Roll damage from a die string like "2d6+3"
 const rollDamage = (damageString: string) => {
   if (!damageString) return 0;
   const match = damageString.match(/(\d+)d(\d+)(?:\+(\d+))?/);
   if (!match) return 0;
   const numDice = parseInt(match[1]);
   const dieSize = parseInt(match[2]);
-  const bonus = parseInt(match[3] || '0');
-  let total = bonus;
+  let total = parseInt(match[3] || '0');
   for (let i = 0; i < numDice; i++) {
     total += Math.floor(Math.random() * dieSize) + 1;
   }
